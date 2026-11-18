@@ -1,0 +1,1 @@
+enum CommunicationTypeEnum { audio, video }

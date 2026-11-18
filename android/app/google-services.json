@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "106712931865",
+    "project_id": "game-edu-617ff",
+    "storage_bucket": "game-edu-617ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:106712931865:android:2dd6932fc20d6cb596d488",
+        "android_client_info": {
+          "package_name": "com.revolutiongames.gameEdu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRiPn-uNthpdEv41AH4ZcKVrIuUoimaFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

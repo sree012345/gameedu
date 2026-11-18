@@ -1,0 +1,50 @@
+class LocalizationAssetsConstants {
+  static const String welcomeScreen = 'assets/features/auth/localization';
+  static const String profile = 'assets/features/profile/localization';
+  static const String postDetail = 'assets/features/post_detail/localization';
+  static const String updateRequired =
+      'assets/features/update_required/localization';
+  static const String home = 'assets/features/home/localization';
+  static const String connection = 'assets/features/connection/localization';
+  static const String splash = 'assets/features/splash/localization';
+  static const String dashboard = 'assets/features/dashboard/localization';
+  static const String createPost = 'assets/features/create_post/localization';
+  static const String shareTemplate =
+      'assets/features/share_template/localization';
+  static const String savePost = 'assets/features/saved_posts/localization';
+  static const String explore = 'assets/features/explore/localization';
+  static const String notification = 'assets/features/notification/localization';
+  static const String tournamentDiscover = 'assets/features/tournament_discover/localization';
+  static const String notificationSetting = 'assets/features/notification_setting/localization';
+  static const String metting = 'assets/features/meeting/localization';
+  static const String organizerDashboard = 'assets/features/organizer_dashboard/localization';
+  static const String registrationManager = 'assets/features/registrations_manager/localization';
+  static const String announcements = 'assets/features/announcements/localization';
+  static const String coachDiscover = 'assets/features/coach_discover/localization';
+  static const String createJob = "assets/features/jobs/localization";
+  static const String teams = 'assets/features/teams/localization';
+  static const String classDetail = 'assets/features/class_detail/localization';
+  static const String jobsHome = 'assets/features/jobs_home/localization';
+  static const String sessionLauncher = 'assets/features/session_launcher/localization';
+  static const String jobsDetails = 'assets/features/jobs_details/localization';
+  static const String applicationTracker = 'assets/features/application_tracker/localization';
+  static const String tryoutsDashboard = 'assets/features/tryouts_dashboard/localization';
+  static const String adminHome = 'assets/features/admin_home/localization';
+  static const String joinMeeting = 'assets/features/join_meeting/localization';
+  static const String goLive = 'assets/features/live/localization';
+  static const String adminUserManagement = 'assets/features/admin_user_management/localization';
+  static const String waitingRoom = 'assets/features/waiting_room/localization';
+  static const String liveDiscover = 'assets/features/discover/localization';
+  static const String meetingRoom = 'assets/features/meeting_room/localization';
+  static const String recordingsList = 'assets/features/recordings/localization';
+  static const String checkin = 'assets/features/checkin/localization' ;
+  static const String fixtures = 'assets/features/fixtures/localization';
+  static const String tournamentWinners = 'assets/features/tournament_winners/localization';
+  static const String message = 'assets/features/messages/localization';
+  static const String gameProfile = 'assets/features/gameprofile/localization';
+  static const String coach = 'assets/features/coach/localization';
+  static const String createTournament = 'assets/features/create_tournament/localization';
+  static const String settings ='assets/features/settings/localization';
+  static const String bracket = 'assets/features/bracket/localization';
+  static const String shorts = 'assets/features/shorts/localization';
+}

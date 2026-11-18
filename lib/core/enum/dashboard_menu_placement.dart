@@ -1,0 +1,4 @@
+enum DashboardMenuPlacement {
+  leftMenu,
+  quickMenu,
+}
