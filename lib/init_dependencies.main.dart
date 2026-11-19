@@ -7,6 +7,8 @@ Future<void> initDependencies() async {
   _initLanguageCubit();
   _initPasswordVisibility();
   _initConfirmPasswordVisibility();
+  _initAuthDependencies();
+
 }
 
 void _initNetworkconnectivityCubit() {
@@ -33,6 +35,19 @@ void _initConfirmPasswordVisibility() {
   if (!serviceLocator.isRegistered<ConfirmPasswordVisibilityCubit>()) {
     serviceLocator.registerLazySingleton<ConfirmPasswordVisibilityCubit>(
       () => ConfirmPasswordVisibilityCubit(),
+    );
+  }
+}
+void _initAuthDependencies() {
+  if (!serviceLocator.isRegistered<FirebaseAuthService>()) {
+    serviceLocator.registerLazySingleton<FirebaseAuthService>(
+      () => FirebaseAuthService(),
+    );
+  }
+
+  if (!serviceLocator.isRegistered<AuthBloc>()) {
+    serviceLocator.registerFactory<AuthBloc>(
+      () => AuthBloc(authService: serviceLocator<FirebaseAuthService>()),
     );
   }
 }
