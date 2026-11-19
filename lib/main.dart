@@ -28,7 +28,8 @@ import 'package:game_edu/core/state_management/cubit/connection_checker_cubit.da
 import 'package:game_edu/core/widgets/popup/es_action_popup.dart';
 import 'package:game_edu/firebase_options.dart';
 import 'package:game_edu/init_dependencies.dart';
-import 'package:game_edu/student_module/auth/auth/presentation/pages/login_page.dart';
+import 'package:game_edu/student_module/auth/bloc/auth_bloc.dart';
+import 'package:game_edu/student_module/auth/presentation/login_page.dart';
 import 'package:game_edu/user_session.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -177,50 +178,7 @@ void main() async {
       assetLoader: const MergedAssetLoader([
         LocalizationAssetsConstants.welcomeScreen,
         LocalizationAssetsConstants.profile,
-        LocalizationAssetsConstants.postDetail,
-        LocalizationAssetsConstants.home,
-        LocalizationAssetsConstants.updateRequired,
-        LocalizationAssetsConstants.connection,
-        LocalizationAssetsConstants.splash,
-        LocalizationAssetsConstants.dashboard,
-        LocalizationAssetsConstants.createPost,
-        LocalizationAssetsConstants.shareTemplate,
-        LocalizationAssetsConstants.savePost,
-        LocalizationAssetsConstants.explore,
-        LocalizationAssetsConstants.notification,
-        LocalizationAssetsConstants.tournamentDiscover,
-        LocalizationAssetsConstants.notificationSetting,
-        LocalizationAssetsConstants.metting,
-        LocalizationAssetsConstants.organizerDashboard,
-        LocalizationAssetsConstants.registrationManager,
-        LocalizationAssetsConstants.announcements,
-        LocalizationAssetsConstants.coachDiscover,
-        LocalizationAssetsConstants.createJob,
-        LocalizationAssetsConstants.teams,
-        LocalizationAssetsConstants.jobsHome,
-        LocalizationAssetsConstants.classDetail,
-        LocalizationAssetsConstants.sessionLauncher,
-        LocalizationAssetsConstants.jobsDetails,
-        LocalizationAssetsConstants.applicationTracker,
-        LocalizationAssetsConstants.tryoutsDashboard,
-        LocalizationAssetsConstants.adminHome,
-        LocalizationAssetsConstants.joinMeeting,
-        LocalizationAssetsConstants.goLive,
-        LocalizationAssetsConstants.adminUserManagement,
-        LocalizationAssetsConstants.waitingRoom,
-        LocalizationAssetsConstants.liveDiscover,
-        LocalizationAssetsConstants.meetingRoom,
-        LocalizationAssetsConstants.recordingsList,
-        LocalizationAssetsConstants.checkin,
-        LocalizationAssetsConstants.fixtures,
-        LocalizationAssetsConstants.tournamentWinners,
-        LocalizationAssetsConstants.message,
-        LocalizationAssetsConstants.gameProfile,
-        LocalizationAssetsConstants.coach,
-        LocalizationAssetsConstants.createTournament,
-        LocalizationAssetsConstants.settings,
-        LocalizationAssetsConstants.bracket,
-        LocalizationAssetsConstants.shorts,
+      
       ]),
 
       
@@ -292,6 +250,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         BlocProvider(
           create: (_) => serviceLocator<ConfirmPasswordVisibilityCubit>(),
         ),
+         BlocProvider(
+          create: (_) => serviceLocator<AuthBloc>(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -304,7 +265,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         localizationsDelegates: context.localizationDelegates,
         theme: ThemeData(
           fontFamily: AppFonts.calibr,
-          scaffoldBackgroundColor: AppPalette.backgroundColor,
+          scaffoldBackgroundColor: AppPalette.textPrimaryColor,
           pageTransitionsTheme: PageTransitionsTheme(
             builders: {
               TargetPlatform.android: NoAnimationPageTransitionsBuilder(),
@@ -369,9 +330,9 @@ class AuthWrapper extends StatelessWidget {
               return const SizedBox();
             }
             if (userSnapshot.data == true) {
-              return const Placeholder(); // TODO: Dashboard / Home
+              return const Placeholder(); 
             }
-            return const Placeholder(); // TODO: Onboarding
+            return const Placeholder(); 
           },
         );
       },
