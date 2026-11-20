@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/constants/typography/app_fonts.dart';
 import 'package:game_edu/common/constants/ui/language_constants.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
+import 'package:game_edu/core/config/server_config.dart';
 import 'package:game_edu/core/firebase/firebase_initialization.dart';
 import 'package:game_edu/core/localization/cubit/confirm_password_visibility_cubit.dart';
 import 'package:game_edu/core/localization/cubit/language_cubit.dart';
@@ -30,6 +31,7 @@ import 'package:game_edu/firebase_options.dart';
 import 'package:game_edu/init_dependencies.dart';
 import 'package:game_edu/student_module/auth/bloc/auth_bloc.dart';
 import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 import 'package:game_edu/user_session.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -145,9 +147,9 @@ void main() async {
   );
   await clearAuthOnFreshInstall();
 
-  await NotificationService.initializeNotificationListeners();
-  NotificationService.listenToTokenRefresh();
-  NotificationService.listenToAuthForToken();
+  // await NotificationService.initializeNotificationListeners();
+  // NotificationService.listenToTokenRefresh();
+  // NotificationService.listenToAuthForToken();
 
   FlutterError.onError = (errorDetails) {
     FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
@@ -290,49 +292,104 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
+
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
-  Future<User?> _checkSession() async {
-    if (!FirebaseInitialization.isFirebaseAppInitialized()) return null;
-    return FirebaseAuth.instance.currentUser;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<User?>(
-      future: _checkSession(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
         }
 
-        final user = snapshot.data;
+        if (authSnapshot.hasError) {
+          debugPrint(
+            '❌ [AuthWrapper] Auth error: ${authSnapshot.error}',
+          );
 
-        // Not logged in -> Login screen
+          return const Center(
+            child: Text('Authentication error'),
+          );
+        }
+
+        final user = authSnapshot.data;
+
         if (user == null) {
+          debugPrint('🔴 [AuthWrapper] User not authenticated');
+
           if (AppRouter.isTermsRoute ||
               AppRouter.isResetPasswordRoute ||
               AppRouter.isAdminLoginRoute ||
               AppRouter.isLoginRoute) {
             return const SizedBox();
           }
+
           return const LoginPage();
         }
 
-        return FutureBuilder<bool>(
-          future: CheckUserExists().isUserRegistered(user.uid),
-          builder: (context, userSnapshot) {
-            if (userSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+        debugPrint('🟢 [AuthWrapper] User UID: ${user.uid}');
+
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          key: ValueKey(user.uid),
+          stream: FirebaseFirestore.instance
+              .collection(ServerConfig.usersCollection)
+              .doc(user.uid)
+              .snapshots(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
-            if (AppRouter.isResetPasswordRoute || AppRouter.isLoginRoute) {
+
+            if (profileSnapshot.hasError) {
+              debugPrint(
+                '❌ [AuthWrapper] Firestore error: '
+                '${profileSnapshot.error}',
+              );
+
+              return const Center(
+                child: Text('Unable to load user profile'),
+              );
+            }
+
+            final profile = profileSnapshot.data;
+
+            debugPrint(
+              '🔍 [AuthWrapper] Firestore document exists: '
+              '${profile?.exists}',
+            );
+
+            if (profile == null || !profile.exists) {
+              return const Center(
+                child: Text('User registration not completed'),
+              );
+            }
+
+            debugPrint(
+              '✅ [AuthWrapper] Profile found in Firestore',
+            );
+
+            debugPrint(
+              '[AuthWrapper] isLoginRoute: ${AppRouter.isLoginRoute}',
+            );
+
+            if (AppRouter.isResetPasswordRoute ||
+                AppRouter.isLoginRoute) {
               return const SizedBox();
             }
-            if (userSnapshot.data == true) {
-              return const Placeholder(); 
-            }
-            return const Placeholder(); 
+
+            debugPrint(
+              '✅ [AuthWrapper] Opening DashboardPage',
+            );
+
+            return const DashboardPage();
           },
         );
       },
@@ -344,20 +401,19 @@ class CheckUserExists {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<bool> isUserRegistered(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore
+        .collection(ServerConfig.usersCollection)
+        .doc(uid)
+        .get();
 
-    if (!doc.exists) return false;
+    debugPrint(
+      'User document exists: ${doc.exists}',
+    );
 
-    final data = doc.data();
-
-    // Old users don't have this field, so treat them as completed
-    if (data == null || !data.containsKey('onboardingCompleted')) {
-      return true;
-    }
-
-    return data['onboardingCompleted'] == true;
+    return doc.exists;
   }
 }
+
 
 class NoAnimationPageTransitionsBuilder extends PageTransitionsBuilder {
   @override

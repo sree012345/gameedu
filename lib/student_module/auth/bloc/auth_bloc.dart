@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
-import 'package:firebase_auth/firebase_auth.dart' show User;
+import 'package:firebase_auth/firebase_auth.dart' ;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/core/config/server_config.dart';
@@ -225,39 +225,63 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
-    if (state.registerNeedsPassword) {
-      // Email -> create account with password
-      final email = state.registerIdentifier.trim();
-      emit(
-        state.copyWith(
-          flow: AuthFlow.register,
-          method: AuthMethod.email,
-          status: AuthStatus.submitting,
-          clearFieldError: true,
-          clearServerError: true,
-        ),
-      );
-      try {
-        final user = await _authService.registerWithEmail(
-          email: email,
-          password: state.registerPassword,
-          displayName: state.fullName.trim(),
-        );
-        await _saveProfile(user, email: email);
-        if (emit.isDone) return;
-        emit(state.copyWith(status: AuthStatus.authenticated));
-      } on AuthFailure catch (e) {
-        if (emit.isDone) return;
-        _fail(emit, e);
-      }
-    } else {
-      // Phone -> OTP (profile is saved after the OTP is verified)
-      await _sendOtp(
-        emit,
+   if (state.registerNeedsPassword) {
+  final email = state.registerIdentifier.trim();
+
+  emit(
+    state.copyWith(
+      flow: AuthFlow.register,
+      method: AuthMethod.email,
+      status: AuthStatus.submitting,
+      clearFieldError: true,
+      clearServerError: true,
+    ),
+  );
+
+  try {
+    debugPrint('========== EMAIL REGISTRATION START ==========');
+
+    final user = await _authService.registerWithEmail(
+      email: email,
+      password: state.registerPassword,
+      displayName: state.fullName.trim(),
+    );
+
+    debugPrint('✅ Firebase account created: ${user.uid}');
+
+    await _saveProfile(user, email: email);
+
+    debugPrint('✅ Firestore profile saved');
+
+    if (emit.isDone) return;
+
+    debugPrint('Before status: ${state.status}');
+    debugPrint('Flow: ${state.flow}');
+    debugPrint('Method: ${state.method}');
+
+    emit(
+      state.copyWith(
         flow: AuthFlow.register,
-        identifier: state.registerIdentifier,
-      );
-    }
+        method: AuthMethod.email,
+        status: AuthStatus.authenticated,
+        clearServerError: true,
+      ),
+    );
+
+    debugPrint('✅ AuthStatus.authenticated emitted');
+  } on AuthFailure catch (e) {
+    if (emit.isDone) return;
+
+    debugPrint('❌ Registration failed: ${e.message}');
+    _fail(emit, e);
+  }
+} else {
+  await _sendOtp(
+    emit,
+    flow: AuthFlow.register,
+    identifier: state.registerIdentifier,
+  );
+}
   }
 
   // ───────────────────────── OTP ─────────────────────────
@@ -417,23 +441,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   /// Saves name / college / student ID. A failure here must not block the
   /// user, because the Firebase account already exists.
-  Future<void> _saveProfile(User user, {String? email, String? phone}) async {
-    try {
-      await _authService.saveUserProfile(
-        uid: user.uid,
-        fullName: state.fullName.trim(),
-        college: state.college.trim(),
-        studentId: state.studentId.trim(),
-        email: email,
-        phone: phone,
-      );
-      debugPrint(
-        '[Auth] Profile saved: ${ServerConfig.usersCollection}/${user.uid}',
-      );
-    } on AuthFailure catch (e) {
-      debugPrint('[Auth] Profile save FAILED: code=${e.code} msg=${e.message}');
-    }
+Future<void> _saveProfile(
+  User user, {
+  String? email,
+  String? phone,
+}) async {
+  try {
+    debugPrint('========== AUTH BLOC SAVE ==========');
+    debugPrint('Saving profile for UID: ${user.uid}');
+
+    await _authService.saveUserProfile(
+      uid: user.uid,
+      fullName: state.fullName.trim(),
+      college: state.college.trim(),
+      studentId: state.studentId.trim(),
+      email: email,
+      phone: phone,
+    );
+
+    debugPrint('✅ AuthBloc profile save completed');
+  } on AuthFailure catch (e) {
+    debugPrint('❌ AuthBloc profile save failed: ${e.message}');
+    rethrow;
   }
+}
 
   void _startResendTimer() {
     _resendTimer?.cancel();

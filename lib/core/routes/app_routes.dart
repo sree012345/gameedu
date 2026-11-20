@@ -1,135 +1,337 @@
-/*
- * -----------------------------------------------------------------------------
- * File        : lib/core/router/app_routes.dart
- * Description : Central route definitions and page resolver used throughout
- *               the application.
- * Author      : Revolution Games Private Limited
- * Created On  : 2026-03-10
- * Last Updated: 2026-03-10
- * -----------------------------------------------------------------------------
- * © 2025 Revolution Games Private Limited. All rights reserved.
- * -----------------------------------------------------------------------------
- *
- * Class       : AppRoutes
- * Purpose     : Provides route names and resolves widgets for routes.
- * -----------------------------------------------------------------------------
- */
+// /*
+//  * -----------------------------------------------------------------------------
+//  * File        : lib/core/routes/app_router.dart
+//  * Description : Central routing system for the application.
+//  * Author      : Revolution Games Private Limited
+//  * Created On  : 2026-03-04
+//  * -----------------------------------------------------------------------------
+//  *
+//  * Class       : AppRouter
+//  * Purpose     : Handles navigation between application screens
+//  *
+//  * Features
+//  *  - Login route guard
+//  *  - Onboarding route restriction
+//  *  - Centralized navigation
+//  *  - Route observer support
+//  *  - Notification permission control
+//  * -----------------------------------------------------------------------------
+//  */
 
-import 'package:flutter/material.dart';
-import 'package:game_edu/core/routes/router_path.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:game_edu/core/config/server_config.dart';
+// import 'package:game_edu/core/firebase/firebase_initialization.dart';
+// import 'package:game_edu/core/routes/router_path.dart';
+// import 'package:game_edu/main.dart';
+// import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+// import 'package:game_edu/student_module/dashboard/presentation/coming_soon_page.dart';
+// import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 
-class AppRoutes {
-  /// Returns the corresponding page widget for a given route
-  static Widget getPage(String route, [String? deepRoute]) {
-    switch (route) {
-      case RouterPath.moderationQueue:
-        return ReportSectionWrapper(initialRoute: Uri.base.toString());
-      case RouterPath.auditLogs:
-        return AuditSectionWrapper(initialRoute: Uri.base.toString());
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-}
+// /// Used for RouteAware widgets
+// final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-Route<dynamic> _emptyRoute() {
-  return PageRouteBuilder(
-    pageBuilder: (_, __, ___) => const Placeholder(),
-    transitionDuration: Duration.zero,
-    reverseTransitionDuration: Duration.zero,
-  );
-}
+// class AppRouter {
+//   static Future<bool> _isAdmin() async {
+//     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-class ReportSectionWrapper extends StatelessWidget {
-  final String? initialRoute;
+//     if (uid == null) return false;
 
-  const ReportSectionWrapper({super.key, this.initialRoute});
+//     // Uses the environment collection (dev_users / qa_users / ...)
+//     final snapshot = await FirebaseFirestore.instance
+//         .collection(ServerConfig.usersCollection)
+//         .doc(uid)
+//         .get();
 
-  @override
-  Widget build(BuildContext context) {
-    return Navigator(
-      initialRoute: initialRoute ?? '/',
-      onGenerateRoute: (settings) {
-        final uri = Uri.parse(settings.name ?? '/');
+//     final data = snapshot.data();
 
-        if (uri.path == RouterPath.reportDetail) {
-          final id = uri.queryParameters['reportId'];
-          if (id == null || id.isEmpty) return _emptyRoute();
-          // TODO: return the report detail page here.
-        }
-        return null;
-      },
-    );
-  }
-}
+//     return (data?['type'] ?? '').toString() == 'admin';
+//   }
 
-class AuditSectionWrapper extends StatelessWidget {
-  final String? initialRoute;
+//   /// Screens from the dashboard / left menu that are not built yet.
+//   /// Each one opens [ComingSoonPage] with this title.
+//   static  final Map<String, String> _comingSoon = {
+//     RouterPath.careers: 'Careers',
+//     RouterPath.courses: 'Courses',
+//     RouterPath.myLearning: 'My Learning',
+//     RouterPath.events: 'Events',
+//     RouterPath.message: 'Chat',
+//     RouterPath.helpSupport: 'Help & Support',
+//     RouterPath.aboutApp: 'About Game Edu',
+//     RouterPath.classes: 'Classes',
+//     RouterPath.assignments: 'Assignments',
+//     RouterPath.resources: 'Resources',
+//     RouterPath.community: 'Community',
+//     RouterPath.notification: 'Notifications',
+//   };
 
-  const AuditSectionWrapper({super.key, this.initialRoute});
+//   /// Main router entry
+//   static bool isTermsRoute = false;
+//   static bool isResetPasswordRoute = false;
+//   static bool isLoginRoute = false;
+//   static bool isAdminLoginRoute = false;
+//   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+//     final user = FirebaseInitialization.isFirebaseAppInitialized()
+//         ? FirebaseAuth.instance.currentUser
+//         : null;
+//     final bool isLoggedIn = user != null;
+//     final uri = Uri.parse(settings.name ?? RouterPath.myProfile);
+//     final String path = uri.path;
+//     final Map<String, String> queryParams = uri.queryParameters;
+//     // Auth Guard
+//     const publicRoutes = {
+//       RouterPath.welcome,
+//       RouterPath.splash,
+//       RouterPath.authWrapper,
+//       RouterPath.loginStep,
+//       RouterPath.onBoarding,
+//       RouterPath.terms,
+//       RouterPath.resetPassword,
+//     };
 
-  @override
-  Widget build(BuildContext context) {
-    return Navigator(
-      initialRoute: initialRoute ?? '/',
-      onGenerateRoute: (settings) {
-        final uri = Uri.parse(settings.name ?? '/');
+//     if (!isLoggedIn && !publicRoutes.contains(path)) {
+//       return _material(
+//         name: RouterPath.welcome,
+//         settings,
+//         const Placeholder(),
+//       );
+//     }
+//     if (path == RouterPath.welcome) {
+//       return _material(
+//         name: RouterPath.welcome,
+//         settings,
+//         const Placeholder(),
+//       );
+//     }
 
-        if (uri.path == RouterPath.auditReportDetail) {
-          final id = uri.queryParameters['reportId'];
-          if (id == null || id.isEmpty) return _emptyRoute();
-          // TODO: return the audit report detail page here.
-        }
-        return null;
-      },
-    );
-  }
-}
+//     const adminRoutes = {
+//       RouterPath.moderationQueue,
+//       RouterPath.auditLogs,
+//       RouterPath.userManagement,
+//       RouterPath.reportDetail,
+//       RouterPath.auditReportDetail,
+//       RouterPath.adminJobManagement,
+//     };
 
-class TournamentSectionWrapper extends StatelessWidget {
-  final String? initialRoute;
+//     if (adminRoutes.contains(path)) {
+//       return PageRouteBuilder(
+//         settings: settings,
+//         pageBuilder: (_, __, ___) {
+//           return FutureBuilder<bool>(
+//             future: _isAdmin(),
+//             builder: (context, snapshot) {
+//               if (!snapshot.hasData) {
+//                 return const Scaffold(
+//                   body: Center(child: CircularProgressIndicator()),
+//                 );
+//               }
 
-  const TournamentSectionWrapper({super.key, this.initialRoute});
+//               if (snapshot.data != true) {
+//                 return const _NotFoundPage();
+//               }
 
-  @override
-  Widget build(BuildContext context) {
-    return Navigator(
-      initialRoute: initialRoute ?? '/',
-      onGenerateRoute: (settings) {
-        final uri = Uri.parse(settings.name ?? '/');
-        final params = uri.queryParameters;
-        logRoute("INNER NAV → ${settings.name}");
+//               return const Placeholder();
+//             },
+//           );
+//         },
+//       );
+//     }
 
-        switch (uri.path) {
-          case RouterPath.tournamentDetail:
-            logRoute("OPEN DETAIL → id=${params['tournamentId']}");
-          case RouterPath.soloRegister:
-            logRoute(
-              "OPEN SOLO REGISTER → "
-              "tId=${params['tournamentId']} dId=${params['divisionId']}",
-            );
-          case RouterPath.disputeResolution:
-            logRoute("OPEN DISPUTE RESOLUTION → tId=${params['tournamentId']}");
-          case RouterPath.chooseTeam:
-            logRoute(
-              "OPEN CHOOSE TEAM → "
-              "tId=${params['tournamentId']} dId=${params['divisionId']}",
-            );
-          case RouterPath.teamRegister:
-            logRoute(
-              "OPEN TEAM REGISTER → "
-              "tId=${params['tournamentId']} "
-              "dId=${params['divisionId']} "
-              "teamId=${params['teamId']}",
-            );
-        }
-        // TODO: return the real pages for each route above.
-        return null;
-      },
-    );
-  }
+//     // Dashboard / left menu screens that are not built yet
+//     final comingSoonTitle = _comingSoon[path];
+//     if (comingSoonTitle != null) {
+//       return _material(
+//         settings,
+//         ComingSoonPage(title: comingSoonTitle),
+//         name: path,
+//       );
+//     }
 
-  void logRoute(String message) {
-    debugPrint(" ROUTE: $message");
-  }
-}
+//     switch (path) {
+//       /// DASHBOARD (home)
+//       case RouterPath.home:
+//         return _material(name: path, settings, const DashboardPage());
+
+//       /// ACTIVE ROUTE
+//       case RouterPath.myProfile:
+//       case RouterPath.tournaments:
+//       case RouterPath.coach:
+//       case RouterPath.explore:
+//       case RouterPath.live:
+//       case RouterPath.moderationQueue:
+//       case RouterPath.auditLogs:
+//       case RouterPath.userManagement:
+//       case RouterPath.adminJobManagement:
+//         return _material(name: path, settings, const Placeholder());
+//       case RouterPath.authWrapper:
+//         return _material(
+//           name: RouterPath.authWrapper,
+//           settings,
+//           const AuthWrapper(),
+//         );
+
+//       /// LOGIN (phone OTP / email + password)
+//       case RouterPath.loginStep:
+//         return _material(
+//           name: RouterPath.loginStep,
+//           settings,
+//           const LoginPage(),
+//         );
+
+//       // case RouterPath.inviteMembers:
+//       //   return _material(
+//       //     name: RouterPath.inviteMembers,
+//       //     settings,
+//       //     const InviteMembersPage(),
+//       //   );
+
+//       //  case RouterPath.memberRequest:
+//       //   final args = settings.arguments as Map<String, dynamic>?;
+
+//       //   final String? teamId =
+//       //       args?["teamId"] ?? queryParams['teamId'];
+
+//       //   final int index =
+//       //       args?["index"] ??
+//       //       int.tryParse(queryParams['index'] ?? '0') ??
+//       //       0;
+
+//       //   if (teamId == null || teamId.isEmpty) {
+//       //     return _material(
+//       //       settings,
+//       //       const _NotFoundPage(),
+//       //       name:
+//       //           "${RouterPath.memberRequest}?teamId=$teamId",
+//       //     );
+//       //   }
+
+//       //   return _material(
+//       //     settings,
+//       //     MemberRequestPage(
+//       //       teamId: teamId,
+//       //       index: index,
+//       //     ),
+//       //     name:
+//       //         "${RouterPath.memberRequest}"
+//       //         "?teamId=$teamId"
+//       //         "&index=$index",
+//       //   );
+
+//       case RouterPath.channel:
+//         return _material(
+//           settings,
+//           name: settings.name, // Keep the full URL with query params
+//           const Placeholder(),
+//         );
+
+//       case RouterPath.profileIntraction:
+//         final uri = Uri.parse(settings.name ?? '');
+//         final profileUserId = uri.queryParameters[':'] ?? '';
+//         final int tab = int.tryParse(uri.queryParameters['tab'] ?? '0') ?? 0;
+
+//         if (profileUserId.isEmpty) {
+//           return _material(
+//             settings,
+//             const _NotFoundPage(),
+//             name: '${RouterPath.profileIntraction}?:=$profileUserId',
+//           );
+//         }
+
+//       default:
+//         // If user is logged in, go home instead of 404
+//         final user = FirebaseAuth.instance.currentUser;
+//         if (user != null) {
+//           return _material(
+//             settings,
+//             const DashboardPage(),
+//             name: RouterPath.home,
+//           );
+//         }
+//         return _material(settings, const _NotFoundPage());
+//     }
+//   }
+
+//   // ------------------------------------------------------
+//   // Material Route Builder
+//   // ------------------------------------------------------
+
+//   static PageRoute _material(
+//     RouteSettings incoming,
+//     Widget child, {
+//     String? name,
+//   }) {
+//     final routeName = name ?? incoming.name ?? '';
+
+//     /// Update notification permission
+//     updateNotificationPermission(routeName);
+
+//     return MaterialPageRoute(
+//       builder: (_) => child,
+//       settings: RouteSettings(
+//         name: incoming.name,
+//         arguments: incoming.arguments,
+//       ),
+//     );
+//   }
+// }
+
+// ////////////////////////////////////////////////////////////////
+// ///
+// /// 404 Page
+// ///
+// ////////////////////////////////////////////////////////////////
+
+// class _NotFoundPage extends StatelessWidget {
+//   const _NotFoundPage();
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: Center(
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             const Text(
+//               '404',
+//               style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+//             ),
+//             const SizedBox(height: 8),
+//             const Text('Page not found'),
+//             const SizedBox(height: 24),
+//             ElevatedButton(
+//               onPressed: () {
+//                 final user = FirebaseAuth.instance.currentUser;
+
+//                 if (user != null) {
+//                   Navigator.of(context).pushReplacementNamed(RouterPath.home);
+//                 } else {
+//                   Navigator.of(
+//                     context,
+//                   ).pushReplacementNamed(RouterPath.welcome);
+//                 }
+//               },
+//               child: const Text('Go to Home'),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// ////////////////////////////////////////////////////////////////
+// ///
+// /// Notification Permission Guard
+// ///
+// ////////////////////////////////////////////////////////////////
+
+// class NotificationRouteGuard {
+//   static bool allowForegroundNotification = false;
+// }
+
+// void updateNotificationPermission(String path) {
+//   final bool isOnboardingRoute = path == RouterPath.welcome;
+
+//   NotificationRouteGuard.allowForegroundNotification = !isOnboardingRoute;
+// }

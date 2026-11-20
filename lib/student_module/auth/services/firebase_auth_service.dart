@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:game_edu/core/config/server_config.dart';
 
 /// Friendly error thrown by [FirebaseAuthService]. The bloc only deals
@@ -140,28 +141,40 @@ class FirebaseAuthService {
 
   // ───────────────────────── Profile ─────────────────────────
 
+Future<void> saveUserProfile({
+  required String uid,
+  required String fullName,
+  required String college,
+  required String studentId,
+  String? email,
+  String? phone,
+}) async {
+  try {
+    debugPrint('========== FIRESTORE SAVE START ==========');
+    debugPrint('User UID: $uid');
+    debugPrint('Collection: ${ServerConfig.usersCollection}');
+    debugPrint('Auth UID: ${_auth.currentUser?.uid}');
 
-  Future<void> saveUserProfile({
-    required String uid,
-    required String fullName,
-    required String college,
-    required String studentId,
-    String? email,
-    String? phone,
-  }) async {
-    try {
-     await _firestore.collection(ServerConfig.usersCollection).doc(uid).set({
-  'fullName': fullName,
-  'college': college,
-  'studentId': studentId,
-  'email': email,
-  'phone': phone,
-  'createdAt': FieldValue.serverTimestamp(),
-}, SetOptions(merge: true));
-    } on FirebaseException catch (e) {
-      throw AuthFailure('Could not save your profile', code: e.code);
-    }
+    await _firestore.collection(ServerConfig.usersCollection).doc(uid).set({
+      'fullName': fullName,
+      'college': college,
+      'studentId': studentId,
+      'email': email,
+      'phone': phone,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    debugPrint('✅ Firestore user saved successfully');
+  } on FirebaseException catch (e) {
+    debugPrint('❌ Firestore error code: ${e.code}');
+    debugPrint('❌ Firestore error message: ${e.message}');
+
+    throw AuthFailure(
+      'Could not save your profile',
+      code: e.code,
+    );
   }
+}
 
   Future<void> signOut() => _auth.signOut();
 

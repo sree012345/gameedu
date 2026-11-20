@@ -8,7 +8,7 @@ Future<void> initDependencies() async {
   _initPasswordVisibility();
   _initConfirmPasswordVisibility();
   _initAuthDependencies();
-
+  _initDashboardDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -48,6 +48,20 @@ void _initAuthDependencies() {
   if (!serviceLocator.isRegistered<AuthBloc>()) {
     serviceLocator.registerFactory<AuthBloc>(
       () => AuthBloc(authService: serviceLocator<FirebaseAuthService>()),
+    );
+  }
+}
+
+void _initDashboardDependencies() {
+  if (!serviceLocator.isRegistered<DashboardService>()) {
+    serviceLocator.registerLazySingleton<DashboardService>(
+      () => DashboardService(),
+    );
+  }
+
+  if (!serviceLocator.isRegistered<DashboardBloc>()) {
+    serviceLocator.registerFactory<DashboardBloc>(
+      () => DashboardBloc(service: serviceLocator<DashboardService>()),
     );
   }
 }

@@ -48,17 +48,34 @@ class _MobileRegisterViewState extends State<MobileRegisterView> {
               p.status != c.status &&
               c.status == AuthStatus.otpSent &&
               c.flow == AuthFlow.register,
+
           listener: (context, state) => AuthNavigator.toOtp(context),
         ),
         // Email: account created -> next screen
-        BlocListener<AuthBloc, AuthState>(
-          listenWhen: (p, c) =>
-              p.status != c.status &&
-              c.status == AuthStatus.authenticated &&
-              c.flow == AuthFlow.register &&
-              c.method == AuthMethod.email,
-          listener: (context, state) => AuthNavigator.toHome(context),
-        ),
+    BlocListener<AuthBloc, AuthState>(
+  listenWhen: (previous, current) {
+    final shouldNavigate =
+        previous.status != current.status &&
+        current.status == AuthStatus.authenticated &&
+        current.flow == AuthFlow.register &&
+        current.method == AuthMethod.email;
+
+    debugPrint(
+      '🔍 [Register Listener] '
+      'Status: ${previous.status} -> ${current.status}, '
+      'Flow: ${current.flow}, '
+      'Method: ${current.method}, '
+      'Navigate: $shouldNavigate',
+    );
+
+    return shouldNavigate;
+  },
+  listener: (context, state) {
+    debugPrint('✅ [Register Listener] Calling toHome()');
+
+    AuthNavigator.toHome(context);
+  },
+),
         // One-shot messages (Firebase errors)
         BlocListener<AuthBloc, AuthState>(
           listenWhen: (p, c) => c.message != null && p.message != c.message,

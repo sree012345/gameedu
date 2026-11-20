@@ -1,265 +1,163 @@
+
 /*
  * -----------------------------------------------------------------------------
  * File        : lib/core/routes/app_router.dart
- * Description : Central routing system for the application.
+ * Description : Central routing system for Game Edu.
  * Author      : Revolution Games Private Limited
- * Created On  : 2026-03-04
- * -----------------------------------------------------------------------------
- *
- * Class       : AppRouter
- * Purpose     : Handles navigation between application screens
- *
- * Features
- *  - Login route guard
- *  - Onboarding route restriction
- *  - Centralized navigation
- *  - Route observer support
- *  - Notification permission control
  * -----------------------------------------------------------------------------
  */
 
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:game_edu/core/firebase/firebase_initialization.dart';
+
 import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/main.dart';
 
+import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
+import 'package:game_edu/student_module/dashboard/presentation/coming_soon_page.dart';
 
-/// Used for RouteAware widgets
-final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+/// Used for RouteAware widgets.
+final RouteObserver<PageRoute> routeObserver =
+    RouteObserver<PageRoute>();
 
 class AppRouter {
-  static Future<bool> _isAdmin() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  AppRouter._();
 
-    if (uid == null) return false;
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    final data = snapshot.data();
-
-    return (data?['type'] ?? '').toString() == 'admin';
-  }
-
-  /// Main router entry
+  // Existing flags retained for AuthWrapper compatibility.
   static bool isTermsRoute = false;
   static bool isResetPasswordRoute = false;
   static bool isLoginRoute = false;
   static bool isAdminLoginRoute = false;
-  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
-    final user = FirebaseInitialization.isFirebaseAppInitialized()
-        ? FirebaseAuth.instance.currentUser
-        : null;
+
+  /// Game Edu routes whose screens are not built yet.
+  static final Map<String, String> _comingSoonRoutes = {
+    RouterPath.careers: 'Careers',
+    RouterPath.courses: 'Courses',
+    RouterPath.myLearning: 'My Learning',
+    RouterPath.events: 'Events',
+    RouterPath.helpSupport: 'Help & Support',
+    RouterPath.aboutApp: 'About Game Edu',
+    RouterPath.classes: 'Classes',
+    RouterPath.assignments: 'Assignments',
+    RouterPath.resources: 'Resources',
+    RouterPath.community: 'Community',
+  };
+
+  /// All application navigation comes through here.
+  static Route<dynamic>? onGenerateRoute(
+    RouteSettings settings,
+  ) {
+    final String path =
+        Uri.parse(settings.name ?? RouterPath.authWrapper).path;
+
+    final User? user = FirebaseAuth.instance.currentUser;
     final bool isLoggedIn = user != null;
-    final uri = Uri.parse(settings.name ?? RouterPath.myProfile);
-    final String path = uri.path;
-    final Map<String, String> queryParams = uri.queryParameters;
-    // Auth Guard
+
+    debugPrint('========== GAME EDU ROUTER ==========');
+    debugPrint('Requested Route: $path');
+    debugPrint('Firebase UID: ${user?.uid}');
+    debugPrint('Is Logged In: $isLoggedIn');
+    debugPrint('=====================================');
+
+    // Authentication routes that do not require login.
     const publicRoutes = {
-      RouterPath.welcome,
-      RouterPath.splash,
       RouterPath.authWrapper,
       RouterPath.loginStep,
-      RouterPath.onBoarding,
-      RouterPath.terms,
-      RouterPath.resetPassword,
+      RouterPath.welcome,
     };
 
+    // Protect all private routes.
     if (!isLoggedIn && !publicRoutes.contains(path)) {
+      debugPrint(
+        '[AppRouter] Not logged in -> AuthWrapper',
+      );
+
       return _material(
-        name: RouterPath.welcome,
         settings,
-        const Placeholder(),
+        const AuthWrapper(),
+        name: RouterPath.authWrapper,
       );
     }
-    if (path == RouterPath.welcome) {
+
+    // Coming Soon screens for Game Edu.
+    final comingSoonTitle = _comingSoonRoutes[path];
+
+    if (comingSoonTitle != null) {
+      debugPrint(
+        '[AppRouter] Opening ComingSoon: $comingSoonTitle',
+      );
+
       return _material(
-        name: RouterPath.welcome,
         settings,
-        const Placeholder(),
+        ComingSoonPage(title: comingSoonTitle),
+        name: path,
       );
     }
 
-  
-
-    const adminRoutes = {
-      RouterPath.moderationQueue,
-      RouterPath.auditLogs,
-      RouterPath.userManagement,
-      RouterPath.reportDetail,
-      RouterPath.auditReportDetail,
-      RouterPath.adminJobManagement,
-    };
-
-    if (adminRoutes.contains(path)) {
-      return PageRouteBuilder(
-        settings: settings,
-        pageBuilder: (_, __, ___) {
-          return FutureBuilder<bool>(
-            future: _isAdmin(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-
-              if (snapshot.data != true) {
-                return const _NotFoundPage();
-              }
-
-              return const Placeholder();
-            },
-          );
-        },
-      );
-    }
     switch (path) {
-      /// ACTIVE ROUTE
-      case RouterPath.myProfile:
-      case RouterPath.home:
-      case RouterPath.tournaments:
-      case RouterPath.coach:
-      case RouterPath.explore:
-      case RouterPath.live:
-      case RouterPath.moderationQueue:
-      case RouterPath.auditLogs:
-      case RouterPath.userManagement:
-      case RouterPath.adminJobManagement:
-        return _material(name: path, settings, const Placeholder());
+      // Firebase authentication wrapper.
       case RouterPath.authWrapper:
         return _material(
-          name: RouterPath.authWrapper,
           settings,
           const AuthWrapper(),
+          name: RouterPath.authWrapper,
         );
-      
+
+      // Login screen.
       case RouterPath.loginStep:
-        return _material(
-          name: RouterPath.loginStep,
-          settings,
-          const Placeholder(),
-        );
+      case RouterPath.welcome:
+        debugPrint('[AppRouter] Opening LoginPage');
 
-      // case RouterPath.inviteMembers:
-      //   return _material(
-      //     name: RouterPath.inviteMembers,
-      //     settings,
-      //     const InviteMembersPage(),
-      //   );
-   
-   
-     
-
-      //  case RouterPath.memberRequest:
-      //   final args = settings.arguments as Map<String, dynamic>?;
-
-      //   final String? teamId =
-      //       args?["teamId"] ?? queryParams['teamId'];
-
-      //   final int index =
-      //       args?["index"] ??
-      //       int.tryParse(queryParams['index'] ?? '0') ??
-      //       0;
-
-      //   if (teamId == null || teamId.isEmpty) {
-      //     return _material(
-      //       settings,
-      //       const _NotFoundPage(),
-      //       name:
-      //           "${RouterPath.memberRequest}?teamId=$teamId",
-      //     );
-      //   }
-
-      //   return _material(
-      //     settings,
-      //     MemberRequestPage(
-      //       teamId: teamId,
-      //       index: index,
-      //     ),
-      //     name:
-      //         "${RouterPath.memberRequest}"
-      //         "?teamId=$teamId"
-      //         "&index=$index",
-      //   );
-    
-      
-
-
-      case RouterPath.channel:
         return _material(
           settings,
-          name: settings.name, // Keep the full URL with query params
-          const Placeholder(),
+          const LoginPage(),
+          name: path,
         );
-  
-  
-      case RouterPath.profileIntraction:
-        final uri = Uri.parse(settings.name ?? '');
-        final profileUserId = uri.queryParameters[':'] ?? '';
-        final int tab = int.tryParse(uri.queryParameters['tab'] ?? '0') ?? 0;
 
-        if (profileUserId.isEmpty) {
-          return _material(
-            settings,
-            const _NotFoundPage(),
-            name: '${RouterPath.profileIntraction}?:=$profileUserId',
-          );
-        }
+      // Main Game Edu dashboard.
+      case RouterPath.home:
+        debugPrint('[AppRouter] Opening DashboardPage');
 
-  
+        return _material(
+          settings,
+          const DashboardPage(),
+          name: RouterPath.home,
+        );
 
-  
-
-     
-
+      // Unrecognized routes.
       default:
-        // If user is logged in, go home instead of 404
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          return _material(
-            settings,
-            const Placeholder(),
-            name: RouterPath.home,
-          );
-        }
-        return _material(settings, const _NotFoundPage());
+        debugPrint('[AppRouter] Unknown route: $path');
+
+        return _material(
+          settings,
+          const _NotFoundPage(),
+          name: path,
+        );
     }
   }
 
-  // ------------------------------------------------------
-  // Material Route Builder
-  // ------------------------------------------------------
-
-  static PageRoute _material(
+  /// Material route builder.
+  static PageRoute<T> _material<T>(
     RouteSettings incoming,
     Widget child, {
     String? name,
   }) {
     final routeName = name ?? incoming.name ?? '';
 
-    /// Update notification permission
     updateNotificationPermission(routeName);
 
-    return MaterialPageRoute(
+    return MaterialPageRoute<T>(
       builder: (_) => child,
       settings: RouteSettings(
-        name: incoming.name,
+        name: routeName,
         arguments: incoming.arguments,
       ),
     );
   }
 }
 
-////////////////////////////////////////////////////////////////
-///
-/// 404 Page
-///
-////////////////////////////////////////////////////////////////
-
+/// 404 screen.
 class _NotFoundPage extends StatelessWidget {
   const _NotFoundPage();
 
@@ -272,22 +170,26 @@ class _NotFoundPage extends StatelessWidget {
           children: [
             const Text(
               '404',
-              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             const Text('Page not found'),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                final user = FirebaseAuth.instance.currentUser;
+                final user =
+                    FirebaseAuth.instance.currentUser;
 
-                if (user != null) {
-                  Navigator.of(context).pushReplacementNamed(RouterPath.home);
-                } else {
-                  Navigator.of(
-                    context,
-                  ).pushReplacementNamed(RouterPath.welcome);
-                }
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(
+                  user != null
+                      ? RouterPath.authWrapper
+                      : RouterPath.loginStep,
+                  (route) => false,
+                );
               },
               child: const Text('Go to Home'),
             ),
@@ -298,18 +200,17 @@ class _NotFoundPage extends StatelessWidget {
   }
 }
 
-////////////////////////////////////////////////////////////////
-///
-/// Notification Permission Guard
-///
-////////////////////////////////////////////////////////////////
-
+/// Notification permission guard.
 class NotificationRouteGuard {
   static bool allowForegroundNotification = false;
 }
 
 void updateNotificationPermission(String path) {
-  final bool isOnboardingRoute = path == RouterPath.welcome;
+  final bool isOnboardingRoute =
+      path == RouterPath.welcome ||
+      path == RouterPath.loginStep ||
+      path == RouterPath.authWrapper;
 
-  NotificationRouteGuard.allowForegroundNotification = !isOnboardingRoute;
+  NotificationRouteGuard.allowForegroundNotification =
+      !isOnboardingRoute;
 }
