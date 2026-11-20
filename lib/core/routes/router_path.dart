@@ -140,6 +140,18 @@ class RouterPath {
   static const String brandListing = '/brand_listing';
   static const String brandDetail = '/brand_detail';
 
+  // ── Game Edu dashboard / left menu (screens not built yet) ──
+  static const String careers = '/careers';
+  static const String courses = '/courses';
+  static const String myLearning = '/my_learning';
+  static const String events = '/events';
+  static const String helpSupport = '/help_support';
+  static const String aboutApp = '/about_game_edu';
+  static const String classes = '/classes';
+  static const String assignments = '/assignments';
+  static const String resources = '/resources';
+  static const String community = '/community';
+
   static const List<String> mainScreens = [
     home,
     myProfile,
