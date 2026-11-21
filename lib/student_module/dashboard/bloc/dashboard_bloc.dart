@@ -73,6 +73,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         _go(emit, RouterPath.helpSupport);
       case DashboardMenu.about:
         _go(emit, RouterPath.aboutApp);
+       
+        
     }
   }
 

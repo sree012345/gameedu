@@ -11,6 +11,7 @@ Future<void> initDependencies() async {
   _initDashboardDependencies();
   _initCreateProfileDependencies();
   _initSplashDependencies();
+  _initProfileDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -84,6 +85,21 @@ void _initSplashDependencies() {
   if (!serviceLocator.isRegistered<StartupService>()) {
     serviceLocator.registerLazySingleton<StartupService>(
       () => StartupService(),
+    );
+  }
+}
+void _initProfileDependencies() {
+  if (!serviceLocator.isRegistered<ProfileService>()) {
+    serviceLocator.registerLazySingleton<ProfileService>(() => ProfileService());
+  }
+  if (!serviceLocator.isRegistered<MyProfileBloc>()) {
+    serviceLocator.registerFactory<MyProfileBloc>(
+      () => MyProfileBloc(service: serviceLocator<ProfileService>()),
+    );
+  }
+  if (!serviceLocator.isRegistered<EditProfileBloc>()) {
+    serviceLocator.registerFactory<EditProfileBloc>(
+      () => EditProfileBloc(service: serviceLocator<ProfileService>()),
     );
   }
 }
