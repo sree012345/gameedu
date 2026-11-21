@@ -1,4 +1,3 @@
-
 /*
  * -----------------------------------------------------------------------------
  * File        : lib/core/routes/app_router.dart
@@ -14,12 +13,13 @@ import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/main.dart';
 
 import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+import 'package:game_edu/student_module/create_profile/presentation/create_profile_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/coming_soon_page.dart';
+import 'package:game_edu/student_module/splash/presentation/splash_page.dart';
 
 /// Used for RouteAware widgets.
-final RouteObserver<PageRoute> routeObserver =
-    RouteObserver<PageRoute>();
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class AppRouter {
   AppRouter._();
@@ -42,14 +42,13 @@ class AppRouter {
     RouterPath.assignments: 'Assignments',
     RouterPath.resources: 'Resources',
     RouterPath.community: 'Community',
+    RouterPath.message: 'Chat', // left menu -> Chat
+    RouterPath.notification: 'Notifications', // dashboard bell
   };
 
   /// All application navigation comes through here.
-  static Route<dynamic>? onGenerateRoute(
-    RouteSettings settings,
-  ) {
-    final String path =
-        Uri.parse(settings.name ?? RouterPath.authWrapper).path;
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    final String path = Uri.parse(settings.name ?? RouterPath.splash).path;
 
     final User? user = FirebaseAuth.instance.currentUser;
     final bool isLoggedIn = user != null;
@@ -60,8 +59,9 @@ class AppRouter {
     debugPrint('Is Logged In: $isLoggedIn');
     debugPrint('=====================================');
 
-    // Authentication routes that do not require login.
+    // Routes that do not require login.
     const publicRoutes = {
+      RouterPath.splash,
       RouterPath.authWrapper,
       RouterPath.loginStep,
       RouterPath.welcome,
@@ -69,14 +69,12 @@ class AppRouter {
 
     // Protect all private routes.
     if (!isLoggedIn && !publicRoutes.contains(path)) {
-      debugPrint(
-        '[AppRouter] Not logged in -> AuthWrapper',
-      );
+      debugPrint('[AppRouter] Not logged in -> Login');
 
       return _material(
         settings,
-        const AuthWrapper(),
-        name: RouterPath.authWrapper,
+        const LoginPage(),
+        name: RouterPath.loginStep,
       );
     }
 
@@ -84,9 +82,7 @@ class AppRouter {
     final comingSoonTitle = _comingSoonRoutes[path];
 
     if (comingSoonTitle != null) {
-      debugPrint(
-        '[AppRouter] Opening ComingSoon: $comingSoonTitle',
-      );
+      debugPrint('[AppRouter] Opening ComingSoon: $comingSoonTitle');
 
       return _material(
         settings,
@@ -96,6 +92,10 @@ class AppRouter {
     }
 
     switch (path) {
+      // App start: logo, then Login / Create Profile / Dashboard.
+      case RouterPath.splash:
+        return _material(settings, const SplashPage(), name: path);
+
       // Firebase authentication wrapper.
       case RouterPath.authWrapper:
         return _material(
@@ -109,11 +109,13 @@ class AppRouter {
       case RouterPath.welcome:
         debugPrint('[AppRouter] Opening LoginPage');
 
-        return _material(
-          settings,
-          const LoginPage(),
-          name: path,
-        );
+        return _material(settings, const LoginPage(), name: path);
+
+      // 3-step profile creation (after register / first login).
+      case RouterPath.createProfile:
+        debugPrint('[AppRouter] Opening CreateProfilePage');
+
+        return _material(settings, const CreateProfilePage(), name: path);
 
       // Main Game Edu dashboard.
       case RouterPath.home:
@@ -129,11 +131,7 @@ class AppRouter {
       default:
         debugPrint('[AppRouter] Unknown route: $path');
 
-        return _material(
-          settings,
-          const _NotFoundPage(),
-          name: path,
-        );
+        return _material(settings, const _NotFoundPage(), name: path);
     }
   }
 
@@ -149,10 +147,7 @@ class AppRouter {
 
     return MaterialPageRoute<T>(
       builder: (_) => child,
-      settings: RouteSettings(
-        name: routeName,
-        arguments: incoming.arguments,
-      ),
+      settings: RouteSettings(name: routeName, arguments: incoming.arguments),
     );
   }
 }
@@ -170,24 +165,16 @@ class _NotFoundPage extends StatelessWidget {
           children: [
             const Text(
               '404',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text('Page not found'),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                final user =
-                    FirebaseAuth.instance.currentUser;
-
-                Navigator.of(context)
-                    .pushNamedAndRemoveUntil(
-                  user != null
-                      ? RouterPath.authWrapper
-                      : RouterPath.loginStep,
+                // Splash decides: Login / Create Profile / Dashboard
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  RouterPath.splash,
                   (route) => false,
                 );
               },
@@ -209,8 +196,8 @@ void updateNotificationPermission(String path) {
   final bool isOnboardingRoute =
       path == RouterPath.welcome ||
       path == RouterPath.loginStep ||
+      path == RouterPath.splash ||
       path == RouterPath.authWrapper;
 
-  NotificationRouteGuard.allowForegroundNotification =
-      !isOnboardingRoute;
+  NotificationRouteGuard.allowForegroundNotification = !isOnboardingRoute;
 }

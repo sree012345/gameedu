@@ -9,6 +9,8 @@ Future<void> initDependencies() async {
   _initConfirmPasswordVisibility();
   _initAuthDependencies();
   _initDashboardDependencies();
+  _initCreateProfileDependencies();
+  _initSplashDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -62,6 +64,26 @@ void _initDashboardDependencies() {
   if (!serviceLocator.isRegistered<DashboardBloc>()) {
     serviceLocator.registerFactory<DashboardBloc>(
       () => DashboardBloc(service: serviceLocator<DashboardService>()),
+    );
+  }
+}
+void _initCreateProfileDependencies() {
+  if (!serviceLocator.isRegistered<CreateProfileService>()) {
+    serviceLocator.registerLazySingleton<CreateProfileService>(
+      () => CreateProfileService(),
+    );
+  }
+  if (!serviceLocator.isRegistered<CreateProfileBloc>()) {
+    serviceLocator.registerFactory<CreateProfileBloc>(
+      () => CreateProfileBloc(service: serviceLocator<CreateProfileService>()),
+    );
+  }
+}
+
+void _initSplashDependencies() {
+  if (!serviceLocator.isRegistered<StartupService>()) {
+    serviceLocator.registerLazySingleton<StartupService>(
+      () => StartupService(),
     );
   }
 }

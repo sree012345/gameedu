@@ -151,7 +151,7 @@ class RouterPath {
   static const String assignments = '/assignments';
   static const String resources = '/resources';
   static const String community = '/community';
-
+  static const String createProfile = '/create_profile';
   static const List<String> mainScreens = [
     home,
     myProfile,
@@ -168,6 +168,7 @@ class RouterPath {
     moderationQueue,
     brandListing,
     adminJobManagement,
+    createProfile,
   ];
 
   /// Helper function to check if a route is a main screen
