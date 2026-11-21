@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/init_dependencies.dart';
+import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
 
 import '../bloc/dashboard_bloc.dart';
 import 'views/home_tab.dart';
@@ -99,24 +100,21 @@ class _DashboardView extends StatelessWidget {
                       Expanded(
                         child: IndexedStack(
                           index: state.tabIndex,
-                          children: const [
-                            HomeTab(),
-                            _TabPlaceholder(
+                          children: [
+                            const HomeTab(),
+                            const _TabPlaceholder(
                               icon: Icons.menu_book_outlined,
                               title: 'Courses',
                             ),
-                            _TabPlaceholder(
+                            const _TabPlaceholder(
                               icon: Icons.calendar_today_outlined,
                               title: 'Events',
                             ),
-                            _TabPlaceholder(
+                            const _TabPlaceholder(
                               icon: Icons.groups_outlined,
                               title: 'Community',
                             ),
-                            _TabPlaceholder(
-                              icon: Icons.person_outline_rounded,
-                              title: 'Profile',
-                            ),
+                            MyProfilePage(),
                           ],
                         ),
                       ),

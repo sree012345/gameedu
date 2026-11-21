@@ -16,6 +16,8 @@ import 'package:game_edu/student_module/auth/presentation/login_page.dart';
 import 'package:game_edu/student_module/create_profile/presentation/create_profile_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/coming_soon_page.dart';
+import 'package:game_edu/student_module/profile/presentation/edit_profile_page.dart';
+import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
 import 'package:game_edu/student_module/splash/presentation/splash_page.dart';
 
 /// Used for RouteAware widgets.
@@ -96,6 +98,10 @@ class AppRouter {
       case RouterPath.splash:
         return _material(settings, const SplashPage(), name: path);
 
+    case RouterPath.myProfile:
+  return _material(settings, const MyProfilePage(), name: path);
+case RouterPath.editProfile:
+  return _material(settings, const EditProfilePage(), name: path);
       // Firebase authentication wrapper.
       case RouterPath.authWrapper:
         return _material(
