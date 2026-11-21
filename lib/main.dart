@@ -15,7 +15,6 @@ import 'package:game_edu/common/constants/typography/app_fonts.dart';
 import 'package:game_edu/common/constants/ui/language_constants.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/core/config/server_config.dart';
-import 'package:game_edu/core/firebase/firebase_initialization.dart';
 import 'package:game_edu/core/localization/cubit/confirm_password_visibility_cubit.dart';
 import 'package:game_edu/core/localization/cubit/language_cubit.dart';
 import 'package:game_edu/core/localization/cubit/password_icon_visibility_cubit.dart';
@@ -32,6 +31,7 @@ import 'package:game_edu/init_dependencies.dart';
 import 'package:game_edu/student_module/auth/bloc/auth_bloc.dart';
 import 'package:game_edu/student_module/auth/presentation/login_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
+import 'package:game_edu/student_module/splash/presentation/splash_page.dart';
 import 'package:game_edu/user_session.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -283,10 +283,45 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 Uri.base.path == '/resetPassword' &&
                 Uri.base.queryParameters['oobCode'] != null
             ? Uri.base.toString()
-            : RouterPath.authWrapper,
-        builder: (context, child) {
-          return PopScope(canPop: false, child: child ?? const SizedBox());
-        },
+            : RouterPath.splash,
+     builder: (context, child) {
+  final page = PopScope(
+    canPop: false,
+    child: child ?? const SizedBox(),
+  );
+
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+    return page;
+  }
+
+  const navigationBarColor = AppPalette.textOnPrimaryColor;
+  final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+  return AnnotatedRegion<SystemUiOverlayStyle>(
+    value: const SystemUiOverlayStyle(
+      systemNavigationBarColor: navigationBarColor,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
+    ),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        page,
+        if (bottomInset > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: bottomInset,
+            child: const IgnorePointer(
+              child: ColoredBox(color: navigationBarColor),
+            ),
+          ),
+      ],
+    ),
+  );
+},
       ),
     );
   }
@@ -297,103 +332,19 @@ class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, authSnapshot) {
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
+  Widget build(BuildContext context) => const SplashPage();
+}
 
-        if (authSnapshot.hasError) {
-          debugPrint(
-            '❌ [AuthWrapper] Auth error: ${authSnapshot.error}',
-          );
-
-          return const Center(
-            child: Text('Authentication error'),
-          );
-        }
-
-        final user = authSnapshot.data;
-
-        if (user == null) {
-          debugPrint('🔴 [AuthWrapper] User not authenticated');
-
-          if (AppRouter.isTermsRoute ||
-              AppRouter.isResetPasswordRoute ||
-              AppRouter.isAdminLoginRoute ||
-              AppRouter.isLoginRoute) {
-            return const SizedBox();
-          }
-
-          return const LoginPage();
-        }
-
-        debugPrint('🟢 [AuthWrapper] User UID: ${user.uid}');
-
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          key: ValueKey(user.uid),
-          stream: FirebaseFirestore.instance
-              .collection(ServerConfig.usersCollection)
-              .doc(user.uid)
-              .snapshots(),
-          builder: (context, profileSnapshot) {
-            if (profileSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            if (profileSnapshot.hasError) {
-              debugPrint(
-                '❌ [AuthWrapper] Firestore error: '
-                '${profileSnapshot.error}',
-              );
-
-              return const Center(
-                child: Text('Unable to load user profile'),
-              );
-            }
-
-            final profile = profileSnapshot.data;
-
-            debugPrint(
-              '🔍 [AuthWrapper] Firestore document exists: '
-              '${profile?.exists}',
-            );
-
-            if (profile == null || !profile.exists) {
-              return const Center(
-                child: Text('User registration not completed'),
-              );
-            }
-
-            debugPrint(
-              '✅ [AuthWrapper] Profile found in Firestore',
-            );
-
-            debugPrint(
-              '[AuthWrapper] isLoginRoute: ${AppRouter.isLoginRoute}',
-            );
-
-            if (AppRouter.isResetPasswordRoute ||
-                AppRouter.isLoginRoute) {
-              return const SizedBox();
-            }
-
-            debugPrint(
-              '✅ [AuthWrapper] Opening DashboardPage',
-            );
-
-            return const DashboardPage();
-          },
-        );
-      },
-    );
+class NoAnimationPageTransitionsBuilder extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
   }
 }
 
@@ -415,18 +366,6 @@ class CheckUserExists {
 }
 
 
-class NoAnimationPageTransitionsBuilder extends PageTransitionsBuilder {
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return child;
-  }
-}
 
 Future<void> clearAuthOnFreshInstall() async {
   final prefs = await SharedPreferences.getInstance();

@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:game_edu/core/config/server_config.dart';
 import 'package:game_edu/core/routes/router_path.dart';
+import 'package:game_edu/student_module/splash/services/startup_service.dart';
 
 import '../../bloc/auth_bloc.dart';
 import '../otp_verification_page.dart';
@@ -40,53 +40,43 @@ class AuthNavigator {
   /// After a successful sign-in: open the dashboard (named route) and
   /// clear the whole auth stack.
  
+  /// After a successful sign-in / registration:
+  ///  * no profile + login flow     -> sign out, show "register first"
+  ///  * profile, onboarding pending -> Create Profile
+  ///  * profile, onboarding done    -> Dashboard
 static Future<void> toHome(BuildContext context) async {
-  debugPrint('========== AUTH NAVIGATOR TO HOME ==========');
-
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user == null) {
-    if (context.mounted) {
-      _showError(context, 'Please login first.');
-    }
+  if (FirebaseAuth.instance.currentUser == null) {
+    _showError(context, 'Please login first.');
     return;
   }
 
+  final isRegistration = context.read<AuthBloc>().state.flow != AuthFlow.login;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+
   try {
-    debugPrint('Checking profile for UID: ${user.uid}');
+    final route = await StartupService().resolveNextRoute(
+      isRegistration: isRegistration,
+    );
 
-    final doc = await FirebaseFirestore.instance
-        .collection(ServerConfig.usersCollection)
-        .doc(user.uid)
-        .get();
-
-    if (!context.mounted) return;
-
-    debugPrint('Profile exists: ${doc.exists}');
-
-    if (!doc.exists) {
-      _showError(
-        context,
-        'User profile not found. Please complete registration.',
-      );
-      return;
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true)
+          .pushNamedAndRemoveUntil<void>(route, (_) => false);
     }
 
-    debugPrint('✅ Profile found. Navigating to Dashboard');
-
-    Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-      RouterPath.home,
-      (route) => false,
-    );
+    if (route == RouterPath.authWrapper &&
+        !isRegistration &&
+        messenger != null &&
+        messenger.mounted) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No account found. Please register first.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   } on FirebaseException catch (e) {
-    debugPrint('❌ Navigation failed: ${e.code}');
-
-    if (!context.mounted) return;
-
-    _showError(
-      context,
-      'Unable to load profile: ${e.message ?? e.code}',
-    );
+    _showError(context, 'Unable to load profile: ${e.message ?? e.code}');
   }
 }
 static void _showError(

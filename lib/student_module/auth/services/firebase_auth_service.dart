@@ -162,6 +162,7 @@ Future<void> saveUserProfile({
       'email': email,
       'phone': phone,
       'createdAt': FieldValue.serverTimestamp(),
+      'onboardingCompleted': false
     }, SetOptions(merge: true));
 
     debugPrint('✅ Firestore user saved successfully');

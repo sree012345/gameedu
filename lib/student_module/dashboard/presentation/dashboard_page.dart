@@ -81,7 +81,6 @@ class _DashboardView extends StatelessWidget {
               if (!didPop) bloc.add(const DashboardTabChanged(DashboardTab.home));
             },
             child: Scaffold(
-              backgroundColor: AppPalette.infoSurfaceColor,
               drawer: DashboardDrawer(onLogout: () => confirmLogout(context)),
               bottomNavigationBar: DashboardBottomNav(
                 currentIndex: state.tabIndex,

@@ -45,6 +45,7 @@ dependencies:
   cloud_functions: ^7.0.1
   permission_handler: 12.0.1
   firebase_core: ^5.1.0
+  image_picker: ^1.2.2
 
 # ----------------------------------------
 # DEV DEPENDENCIES

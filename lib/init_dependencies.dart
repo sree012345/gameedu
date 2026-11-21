@@ -5,8 +5,11 @@ import 'package:game_edu/core/network/internet_status_checker.dart';
 import 'package:game_edu/core/state_management/cubit/connection_checker_cubit.dart';
 import 'package:game_edu/student_module/auth/bloc/auth_bloc.dart';
 import 'package:game_edu/student_module/auth/services/firebase_auth_service.dart';
+import 'package:game_edu/student_module/create_profile/bloc/create_profile_bloc.dart';
+import 'package:game_edu/student_module/create_profile/services/create_profile_service.dart';
 import 'package:game_edu/student_module/dashboard/bloc/dashboard_bloc.dart';
 import 'package:game_edu/student_module/dashboard/services/dashboard_service.dart';
+import 'package:game_edu/student_module/splash/services/startup_service.dart';
 import 'package:get_it/get_it.dart';
 
 part 'init_dependencies.main.dart';
