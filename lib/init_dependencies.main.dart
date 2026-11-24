@@ -12,6 +12,7 @@ Future<void> initDependencies() async {
   _initCreateProfileDependencies();
   _initSplashDependencies();
   _initProfileDependencies();
+  _initClassesDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -102,4 +103,37 @@ void _initProfileDependencies() {
       () => EditProfileBloc(service: serviceLocator<ProfileService>()),
     );
   }
+}
+
+void _initClassesDependencies() {
+  if (!serviceLocator.isRegistered<ClassesService>()) {
+    serviceLocator.registerLazySingleton<ClassesService>(() => ClassesService());
+  }
+  if (!serviceLocator.isRegistered<ClassesBloc>()) {
+    serviceLocator.registerFactory<ClassesBloc>(
+      () => ClassesBloc(service: serviceLocator<ClassesService>()),
+    );
+  }
+
+    if (!serviceLocator.isRegistered<ClassDetailService>()) {
+    serviceLocator.registerLazySingleton<ClassDetailService>(
+      () => ClassDetailService(),
+    );
+  }
+  if (!serviceLocator.isRegistered<ClassDetailBloc>()) {
+    serviceLocator.registerFactory<ClassDetailBloc>(
+      () => ClassDetailBloc(service: serviceLocator<ClassDetailService>(), classId: ''),
+    );
+  }
+    if (!serviceLocator.isRegistered<ClassDetailService>()) {
+    serviceLocator.registerLazySingleton<ClassDetailService>(
+      () => ClassDetailService(),
+    );
+  }
+  if (!serviceLocator.isRegistered<LessonBloc>()) {
+    serviceLocator.registerFactory<LessonBloc>(
+      () => LessonBloc(service: serviceLocator<ClassDetailService>(), classId: '', lessonId: '', videoDone:false),
+    );
+  }
+
 }

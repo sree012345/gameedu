@@ -30,6 +30,7 @@ import 'package:game_edu/firebase_options.dart';
 import 'package:game_edu/init_dependencies.dart';
 import 'package:game_edu/student_module/auth/bloc/auth_bloc.dart';
 import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+import 'package:game_edu/student_module/classes/bloc/classes_bloc.dart';
 import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 import 'package:game_edu/student_module/splash/presentation/splash_page.dart';
 import 'package:game_edu/user_session.dart';
@@ -254,6 +255,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
          BlocProvider(
           create: (_) => serviceLocator<AuthBloc>(),
+        ),
+           BlocProvider(
+          create: (_) => serviceLocator<ClassesBloc>(),
         ),
       ],
       child: MaterialApp(

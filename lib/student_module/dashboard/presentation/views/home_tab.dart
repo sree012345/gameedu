@@ -201,7 +201,7 @@ class _ContinueLearningCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'No course in progress',
+                  'No Classes in progress',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -226,7 +226,7 @@ class _ContinueLearningCard extends StatelessWidget {
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                       child: Text(
-                        'Browse Courses',
+                        'Browse Classes',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,

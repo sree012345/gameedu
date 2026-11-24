@@ -13,7 +13,7 @@ class DashboardBottomNav extends StatelessWidget {
 
   static const List<_NavItem> _items = [
     _NavItem(Icons.home_rounded, 'Home'),
-    _NavItem(Icons.menu_book_outlined, 'Courses'),
+    _NavItem(Icons.menu_book_outlined, 'Classes'),
     _NavItem(Icons.calendar_today_outlined, 'Events'),
     _NavItem(Icons.groups_outlined, 'Community'),
     _NavItem(Icons.person_outline_rounded, 'Profile'),
