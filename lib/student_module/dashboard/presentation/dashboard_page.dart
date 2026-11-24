@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/init_dependencies.dart';
+import 'package:game_edu/student_module/classes/dev/classes_seed_button.dart';
+import 'package:game_edu/student_module/classes/presentation/classes_tab.dart';
 import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
 
 import '../bloc/dashboard_bloc.dart';
@@ -31,7 +33,7 @@ class _DashboardView extends StatelessWidget {
 
   static const List<String> _titles = [
     'Game Edu',
-    'Courses',
+    'Classes',
     'Events',
     'Community',
     'Profile',
@@ -102,14 +104,8 @@ class _DashboardView extends StatelessWidget {
                           index: state.tabIndex,
                           children: [
                             const HomeTab(),
-                            const _TabPlaceholder(
-                              icon: Icons.menu_book_outlined,
-                              title: 'Courses',
-                            ),
-                            const _TabPlaceholder(
-                              icon: Icons.calendar_today_outlined,
-                              title: 'Events',
-                            ),
+                            const ClassesTab(),
+                            const ClassesSeedButton(),
                             const _TabPlaceholder(
                               icon: Icons.groups_outlined,
                               title: 'Community',

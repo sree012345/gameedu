@@ -59,8 +59,7 @@ class DashboardDrawer extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   children: [
                     item(DashboardMenu.home, Icons.home_outlined, 'Home'),
-                    item(DashboardMenu.careers, Icons.school_outlined, 'Careers'),
-                    item(DashboardMenu.courses, Icons.layers_outlined, 'Courses'),
+                    item(DashboardMenu.courses, Icons.layers_outlined, 'Classes'),
                     item(
                       DashboardMenu.myLearning,
                       Icons.smart_display_outlined,
