@@ -12,9 +12,14 @@ final class LessonStarted extends LessonEvent {
   const LessonStarted();
 }
 
-/// The video reached the end.
-final class LessonVideoFinished extends LessonEvent {
-  const LessonVideoFinished();
+/// One of the lesson videos was watched to the end.
+final class LessonVideoWatched extends LessonEvent {
+  const LessonVideoWatched(this.videoId);
+
+  final String videoId;
+
+  @override
+  List<Object?> get props => [videoId];
 }
 
 /// The student tapped an option of a question.

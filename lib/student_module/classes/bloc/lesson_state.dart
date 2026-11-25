@@ -8,6 +8,7 @@ final class LessonState extends Equatable {
     this.materials = const [],
     this.questions = const [],
     this.answers = const {},
+    this.watchedVideoIds = const {},
     this.videoDone = false,
     this.result,
     this.submitting = false,
@@ -22,7 +23,10 @@ final class LessonState extends Equatable {
   /// questionId -> selected option index
   final Map<String, int> answers;
 
-  /// The video was watched to the end (saved for this user).
+  /// Ids of the videos watched to the end.
+  final Set<String> watchedVideoIds;
+
+  /// ALL videos of this lesson were watched (saved for this user).
   final bool videoDone;
 
   /// Set after the assignment is submitted.
@@ -45,6 +49,7 @@ final class LessonState extends Equatable {
     List<LessonMaterial>? materials,
     List<AssignmentQuestion>? questions,
     Map<String, int>? answers,
+    Set<String>? watchedVideoIds,
     bool? videoDone,
     AssignmentResult? result,
     bool? submitting,
@@ -58,6 +63,7 @@ final class LessonState extends Equatable {
       materials: materials ?? this.materials,
       questions: questions ?? this.questions,
       answers: answers ?? this.answers,
+      watchedVideoIds: watchedVideoIds ?? this.watchedVideoIds,
       videoDone: videoDone ?? this.videoDone,
       result: result ?? this.result,
       submitting: submitting ?? this.submitting,
@@ -72,6 +78,7 @@ final class LessonState extends Equatable {
     materials,
     questions,
     answers,
+    watchedVideoIds,
     videoDone,
     result,
     submitting,

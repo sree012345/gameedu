@@ -5,26 +5,30 @@ import '../services/class_detail_service.dart';
 part 'lesson_event.dart';
 part 'lesson_state.dart';
 
-/// One class page: study materials, video completion and the assignment.
+/// One class page: videos, study materials and the assignment.
 class LessonBloc extends Bloc<LessonEvent, LessonState> {
   LessonBloc({
     required ClassDetailService service,
     required String classId,
     required String lessonId,
+    required List<String> videoIds,
     required bool videoDone,
     AssignmentResult? result,
   }) : _service = service,
        _classId = classId,
        _lessonId = lessonId,
+       _videoIds = videoIds,
        super(
          LessonState(
            videoDone: videoDone,
+           // lesson already completed earlier -> every video shows a tick
+           watchedVideoIds: videoDone ? videoIds.toSet() : const {},
            result: result,
            answers: result?.answers ?? const {},
          ),
        ) {
     on<LessonStarted>(_onStarted);
-    on<LessonVideoFinished>(_onVideoFinished);
+    on<LessonVideoWatched>(_onVideoWatched);
     on<AnswerSelected>(_onAnswerSelected);
     on<AssignmentSubmitted>(_onSubmitted);
   }
@@ -32,6 +36,7 @@ class LessonBloc extends Bloc<LessonEvent, LessonState> {
   final ClassDetailService _service;
   final String _classId;
   final String _lessonId;
+  final List<String> _videoIds;
 
   Future<void> _onStarted(
     LessonStarted event,
@@ -56,23 +61,38 @@ class LessonBloc extends Bloc<LessonEvent, LessonState> {
     }
   }
 
-  /// The video reached the end: open the assignment and save it for the user.
-  Future<void> _onVideoFinished(
-    LessonVideoFinished event,
+  /// A video reached the end. When ALL videos are watched the assignment
+  /// opens and the lesson is saved as completed for the user.
+  Future<void> _onVideoWatched(
+    LessonVideoWatched event,
     Emitter<LessonState> emit,
   ) async {
-    if (state.videoDone) return; // already saved earlier
+    if (state.watchedVideoIds.contains(event.videoId)) return;
 
-    emit(state.copyWith(videoDone: true));
+    final watched = {...state.watchedVideoIds, event.videoId};
+    final allWatched =
+        _videoIds.isNotEmpty && _videoIds.every(watched.contains);
+
+    if (!allWatched || state.videoDone) {
+      emit(state.copyWith(watchedVideoIds: watched));
+      return;
+    }
+
+    emit(state.copyWith(watchedVideoIds: watched, videoDone: true));
 
     try {
       await _service.markLessonCompleted(_classId, _lessonId);
     } on ClassDetailFailure catch (e) {
       if (emit.isDone) return;
-      emit(state.copyWith(videoDone: false));
+      emit(
+        state.copyWith(
+          videoDone: false,
+          watchedVideoIds: {...watched}..remove(event.videoId),
+        ),
+      );
       _showMessage(
         emit,
-        '${e.message}. Please open this class again and watch the video to the end.',
+        '${e.message}. Please watch the last video to the end again.',
       );
     }
   }

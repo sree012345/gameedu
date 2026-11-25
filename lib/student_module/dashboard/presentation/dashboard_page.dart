@@ -5,6 +5,8 @@ import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/init_dependencies.dart';
 import 'package:game_edu/student_module/classes/dev/classes_seed_button.dart';
 import 'package:game_edu/student_module/classes/presentation/classes_tab.dart';
+import 'package:game_edu/student_module/events/dev/events_seed_button.dart';
+import 'package:game_edu/student_module/events/presentation/events_tab.dart';
 import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
 
 import '../bloc/dashboard_bloc.dart';
@@ -105,11 +107,8 @@ class _DashboardView extends StatelessWidget {
                           children: [
                             const HomeTab(),
                             const ClassesTab(),
-                            const ClassesSeedButton(),
-                            const _TabPlaceholder(
-                              icon: Icons.groups_outlined,
-                              title: 'Community',
-                            ),
+                            EventsTab(),
+                            const ClassesSeedButton (), // TEMPORARY (debug only)
                             MyProfilePage(),
                           ],
                         ),

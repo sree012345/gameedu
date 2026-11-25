@@ -14,6 +14,8 @@ import 'package:game_edu/student_module/create_profile/bloc/create_profile_bloc.
 import 'package:game_edu/student_module/create_profile/services/create_profile_service.dart';
 import 'package:game_edu/student_module/dashboard/bloc/dashboard_bloc.dart';
 import 'package:game_edu/student_module/dashboard/services/dashboard_service.dart';
+import 'package:game_edu/student_module/events/bloc/events_bloc.dart';
+import 'package:game_edu/student_module/events/services/events_service.dart';
 import 'package:game_edu/student_module/profile/bloc/edit_profile_bloc.dart';
 import 'package:game_edu/student_module/profile/bloc/my_profile_bloc.dart';
 import 'package:game_edu/student_module/profile/services/profile_service.dart';
