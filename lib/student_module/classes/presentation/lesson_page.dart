@@ -3,20 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/init_dependencies.dart'; // exports serviceLocator
 import 'package:game_edu/student_module/classes/models/lesson_model.dart';
-import 'package:game_edu/student_module/classes/presentation/widgets/gradient_header.dart';
-import 'package:game_edu/student_module/classes/presentation/widgets/lesson_player_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../bloc/lesson_bloc.dart';
 import '../models/lesson.dart';
 import '../services/class_detail_service.dart';
+import 'assignment_page.dart';
+import 'lesson_video_page.dart';
 import 'widgets/class_card.dart';
 import 'widgets/class_labels.dart';
+import 'widgets/gradient_header.dart';
 import 'widgets/lesson_video.dart';
+import 'widgets/lesson_widgets.dart';
 
-/// One class (lesson) page:
-///   video (top)  ->  study materials (tap = open / download)
-///   ->  assignment (opens when the video ends, multiple choice, marks saved).
+/// One class page:
+///   picture -> title -> About -> Lesson videos -> Study notes -> Assignment.
+/// A video opens in its own page, the assignment opens in its own page.
 class LessonPage extends StatelessWidget {
   const LessonPage({
     super.key,
@@ -25,6 +27,7 @@ class LessonPage extends StatelessWidget {
     required this.number,
     required this.videoDone,
     required this.result,
+    this.thumbnailKey,
   });
 
   final String classId;
@@ -33,6 +36,9 @@ class LessonPage extends StatelessWidget {
   final bool videoDone;
   final AssignmentResult? result;
 
+  /// Picture on top (the course thumbnail). Optional.
+  final String? thumbnailKey;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<LessonBloc>(
@@ -40,33 +46,29 @@ class LessonPage extends StatelessWidget {
         service: serviceLocator<ClassDetailService>(),
         classId: classId,
         lessonId: lesson.id,
+        videoIds: lesson.playlist.map((v) => v.id).toList(),
         videoDone: videoDone,
         result: result,
       )..add(const LessonStarted()),
-      child: _LessonView(lesson: lesson, number: number),
+      child: _LessonView(
+        lesson: lesson,
+        number: number,
+        thumbnailKey: thumbnailKey,
+      ),
     );
   }
 }
 
-class _LessonView extends StatefulWidget {
-  const _LessonView({required this.lesson, required this.number});
+class _LessonView extends StatelessWidget {
+  const _LessonView({
+    required this.lesson,
+    required this.number,
+    required this.thumbnailKey,
+  });
 
   final Lesson lesson;
   final int number;
-
-  @override
-  State<_LessonView> createState() => _LessonViewState();
-}
-
-class _LessonViewState extends State<_LessonView> {
-  final ScrollController _scroll = ScrollController();
-  final GlobalKey _assignmentKey = GlobalKey();
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
+  final String? thumbnailKey;
 
   void _show(ScaffoldMessengerState messenger, String text) {
     messenger
@@ -80,21 +82,42 @@ class _LessonViewState extends State<_LessonView> {
       );
   }
 
-  void _scrollToAssignment() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _assignmentKey.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOut,
-      );
-    });
+  void _openVideo(BuildContext context, List<LessonVideo> videos, int index) {
+    final bloc = context.read<LessonBloc>();
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider<LessonBloc>.value(
+          value: bloc,
+          child: LessonVideoPage(
+            video: videos[index],
+            index: index,
+            total: videos.length,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openAssignment(BuildContext context) {
+    final bloc = context.read<LessonBloc>();
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider<LessonBloc>.value(
+          value: bloc,
+          child: const AssignmentPage(),
+        ),
+      ),
+    );
   }
 
   /// Opens / downloads a study material (PDF, doc ...) in the phone's viewer
   /// or browser.
-  Future<void> _openMaterial(LessonMaterial material) async {
+  Future<void> _openMaterial(
+    BuildContext context,
+    LessonMaterial material,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -109,134 +132,121 @@ class _LessonViewState extends State<_LessonView> {
     }
   }
 
-  Future<void> _confirmSubmit(LessonBloc bloc, LessonState state) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Submit assignment?'),
-        content: Text(
-          'You answered ${state.answeredCount} of ${state.questions.length} '
-          'questions. You cannot change your answers after submitting.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Submit'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok == true && mounted) bloc.add(const AssignmentSubmitted());
-  }
-
   @override
   Widget build(BuildContext context) {
-    final unit = kClassSingular.toLowerCase();
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final videos = lesson.playlist;
+    final unit = kClassSingular.toLowerCase();
 
     return BlocListener<LessonBloc, LessonState>(
       listenWhen: (p, c) => c.message != null && p.message != c.message,
       listener: (context, state) =>
           _show(ScaffoldMessenger.of(context), state.message!),
       child: BlocListener<LessonBloc, LessonState>(
-        // assignment just submitted -> scroll up to the score card
-        listenWhen: (p, c) => !p.isSubmitted && c.isSubmitted,
-        listener: (context, state) => _scrollToAssignment(),
-        child: BlocListener<LessonBloc, LessonState>(
-          // video just finished
-          listenWhen: (p, c) => !p.videoDone && c.videoDone,
-          listener: (context, state) {
-            final messenger = ScaffoldMessenger.of(context);
-            if (state.hasAssignment) {
-              _show(messenger, 'Video completed! Now do the assignment');
-              _scrollToAssignment();
-            } else {
-              _show(messenger, '${kClassSingular} completed 🎉');
-            }
-          },
-          child: BlocBuilder<LessonBloc, LessonState>(
-            builder: (context, state) {
-              final bloc = context.read<LessonBloc>();
+        // all videos just finished
+        listenWhen: (p, c) => !p.videoDone && c.videoDone,
+        listener: (context, state) {
+          final messenger = ScaffoldMessenger.of(context);
+          _show(
+            messenger,
+            state.hasAssignment
+                ? 'All videos completed! You can start the assignment now'
+                : '$kClassSingular completed 🎉',
+          );
+        },
+        child: BlocBuilder<LessonBloc, LessonState>(
+          builder: (context, state) {
+            final bloc = context.read<LessonBloc>();
 
-              // The player wraps the whole screen (needed for YouTube
-              // fullscreen / landscape): in landscape it shows only the video.
-              return LessonVideoPlayer(
-                key: ValueKey(widget.lesson.id),
-                lesson: widget.lesson,
-                onCompleted: () => bloc.add(const LessonVideoFinished()),
-                builder: (context, player) {
-                  return Scaffold(
-                    backgroundColor: AppPalette.infoSurfaceColor,
-                    body: Column(
-                      children: [
-                        GradientHeader(
-                          title: '$kClassSingular ${widget.number}',
-                          onBack: () => Navigator.of(context).maybePop(),
-                        ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            controller: _scroll,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // the video now scrolls together with the page
-                                ColoredBox(color: Colors.black, child: player),
-                                Padding(
-                                  padding: EdgeInsets.fromLTRB(
-                                    16,
-                                    16,
-                                    16,
-                                    28 + bottomInset,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      _TitleCard(
-                                        number: widget.number,
-                                        lesson: widget.lesson,
-                                        state: state,
-                                        unit: unit,
-                                      ),
-                                      const SizedBox(height: 18),
-                                      ..._body(context, state, bloc),
-                                    ],
-                                  ),
-                                ),
-                              ],
+            return Scaffold(
+              backgroundColor: AppPalette.infoSurfaceColor,
+              body: Column(
+                children: [
+                  GradientHeader(
+                    title: '$kClassSingular $number',
+                    onBack: () => Navigator.of(context).maybePop(),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        28 + bottomInset,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (thumbnailKey != null) ...[
+                            _Hero(thumbnailKey: thumbnailKey!),
+                            const SizedBox(height: 16),
+                          ],
+                          Text(
+                            lesson.title.isEmpty
+                                ? 'Untitled $unit'
+                                : lesson.title,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              height: 1.15,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.authTextPrimaryColor,
                             ),
                           ),
-                        ),
-                      ],
+                          if (lesson.description.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            LessonSectionTitle(title: 'About This $kClassSingular'),
+                            const SizedBox(height: 6),
+                            Text(
+                              lesson.description,
+                              style: const TextStyle(
+                                fontSize: 15.5,
+                                height: 1.4,
+                                color: AppPalette.authTextSecondaryColor,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          LessonSectionTitle(
+                            title: 'Lesson Videos',
+                            trailing: videos.length > 1
+                                ? '${state.watchedVideoIds.length}/${videos.length} watched'
+                                : null,
+                          ),
+                          const SizedBox(height: 10),
+                          _VideosCard(
+                            videos: videos,
+                            watched: state.watchedVideoIds,
+                            onOpen: (i) => _openVideo(context, videos, i),
+                          ),
+                          const SizedBox(height: 20),
+                          ..._lower(context, state, bloc),
+                        ],
+                      ),
                     ),
-                  );
-                },
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  List<Widget> _body(BuildContext context, LessonState state, LessonBloc bloc) {
+  /// Study notes + assignment (they need the extras loaded from Firestore).
+  List<Widget> _lower(BuildContext context, LessonState state, LessonBloc bloc) {
     switch (state.status) {
       case LessonStatus.loading:
         return const [
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 28),
+            padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator()),
           ),
         ];
 
       case LessonStatus.failure:
         return [
-          _InfoCard(
+          LessonInfoCard(
             icon: Icons.cloud_off_outlined,
             title: state.error ?? 'Could not load this ${kClassSingular.toLowerCase()}',
             isError: true,
@@ -246,160 +256,296 @@ class _LessonViewState extends State<_LessonView> {
         ];
 
       case LessonStatus.loaded:
+        final hasNotes =
+            lesson.takeaways.isNotEmpty || state.materials.isNotEmpty;
+
         return [
-          if (state.materials.isNotEmpty) ...[
-            const _SectionTitle(title: 'Study materials'),
+          if (hasNotes) ...[
+            const LessonSectionTitle(title: 'Study Notes'),
             const SizedBox(height: 10),
+            if (lesson.takeaways.isNotEmpty) ...[
+              _TakeawaysCard(items: lesson.takeaways),
+              const SizedBox(height: 12),
+            ],
             for (final material in state.materials)
               _MaterialTile(
                 material: material,
-                onTap: () => _openMaterial(material),
+                onTap: () => _openMaterial(context, material),
               ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
           ],
-          KeyedSubtree(
-            key: _assignmentKey,
-            child: _AssignmentSection(
+          if (state.hasAssignment) ...[
+            const LessonSectionTitle(title: 'Assignment'),
+            const SizedBox(height: 10),
+            _AssignmentCard(
               state: state,
-              onSelect: (questionId, index) =>
-                  bloc.add(AnswerSelected(questionId, index)),
-              onSubmit: () => _confirmSubmit(bloc, state),
+              onOpen: () => _openAssignment(context),
             ),
-          ),
+          ],
         ];
     }
   }
 }
 
-// ───────────────────────── title ─────────────────────────
+// ───────────────────────── picture ─────────────────────────
 
-class _TitleCard extends StatelessWidget {
-  const _TitleCard({
-    required this.number,
-    required this.lesson,
-    required this.state,
-    required this.unit,
-  });
+class _Hero extends StatelessWidget {
+  const _Hero({required this.thumbnailKey});
 
-  final int number;
-  final Lesson lesson;
-  final LessonState state;
-  final String unit;
-
-  bool get _completed =>
-      state.videoDone &&
-      state.status == LessonStatus.loaded &&
-      (!state.hasAssignment || state.isSubmitted);
-
-  String get _statusText {
-    if (!state.videoDone) {
-      return 'Watch the full video to complete this $unit';
-    }
-    if (state.status != LessonStatus.loaded) return 'Video completed';
-    if (!state.hasAssignment) return 'Completed';
-    if (state.isSubmitted) {
-      return 'Completed · Score ${state.result!.score}/${state.result!.total}';
-    }
-    return 'Video completed · Assignment pending';
-  }
+  final String thumbnailKey;
 
   @override
   Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        height: 190,
+        width: double.infinity,
+        child: FittedBox(
+          fit: BoxFit.cover,
+          clipBehavior: Clip.hardEdge,
+          child: ClassThumbTile(thumbnailKey: thumbnailKey, size: 400),
+        ),
+      ),
+    );
+  }
+}
+
+// ───────────────────────── videos ─────────────────────────
+
+class _VideosCard extends StatelessWidget {
+  const _VideosCard({
+    required this.videos,
+    required this.watched,
+    required this.onOpen,
+  });
+
+  final List<LessonVideo> videos;
+  final Set<String> watched;
+  final ValueChanged<int> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (videos.isEmpty) {
+      return const LessonInfoCard(
+        icon: Icons.videocam_off_outlined,
+        title: 'Video not added yet',
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppPalette.authCardSurfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: classCardShadow(),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppPalette.inputBorderColor.withValues(alpha: 0.7),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$kClassSingular $number',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.primaryBlue,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            lesson.title.isEmpty ? 'Untitled $unit' : lesson.title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.authTextPrimaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                _completed
-                    ? Icons.check_circle_rounded
-                    : Icons.play_circle_outline_rounded,
-                size: 18,
-                color: _completed
-                    ? AppPalette.successColor
-                    : AppPalette.primaryBlue,
+          for (int i = 0; i < videos.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                indent: 14,
+                endIndent: 14,
+                color: AppPalette.authDividerColor,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _statusText,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _completed
-                        ? AppPalette.successColor
-                        : AppPalette.authTextSecondaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            _VideoRow(
+              video: videos[i],
+              watched: watched.contains(videos[i].id),
+              onTap: () => onOpen(i),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.trailing});
+class _VideoRow extends StatelessWidget {
+  const _VideoRow({
+    required this.video,
+    required this.watched,
+    required this.onTap,
+  });
 
-  final String title;
-  final String? trailing;
+  final LessonVideo video;
+  final bool watched;
+  final VoidCallback onTap;
+
+  Widget _placeholder() => const ColoredBox(
+    color: Color(0xFF1B2A4A),
+    child: SizedBox.expand(),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.authTextPrimaryColor,
+    final ytId = LessonVideoSource.youtubeId(video.url);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 108,
+                height: 62,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (ytId != null)
+                      Image.network(
+                        'https://img.youtube.com/vi/$ytId/hqdefault.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder(),
+                      )
+                    else
+                      _placeholder(),
+                    Center(
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.45),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.authTextPrimaryColor,
+                    ),
+                  ),
+                  if (video.durationLabel.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      video.durationLabel,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppPalette.authTextSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              watched
+                  ? Icons.check_circle_rounded
+                  : Icons.chevron_right_rounded,
+              size: watched ? 28 : 26,
+              color: watched
+                  ? AppPalette.successColor
+                  : AppPalette.primaryBlue,
+            ),
+          ],
         ),
-        if (trailing != null)
-          Text(
-            trailing!,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppPalette.authTextSecondaryColor,
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
 
-// ───────────────────────── materials ─────────────────────────
+// ───────────────────────── study notes ─────────────────────────
+
+class _TakeawaysCard extends StatelessWidget {
+  const _TakeawaysCard({required this.items});
+
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        color: AppPalette.primaryBlue.withValues(alpha: 0.10),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: AppPalette.primaryBlue),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Key Takeaways',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppPalette.authTextPrimaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      for (final item in items)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppPalette.primaryBlue,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item,
+                                  style: const TextStyle(
+                                    fontSize: 15.5,
+                                    height: 1.35,
+                                    color: AppPalette.authTextPrimaryColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _MaterialTile extends StatelessWidget {
   const _MaterialTile({required this.material, required this.onTap});
@@ -443,27 +589,21 @@ class _MaterialTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: AppPalette.authCardSurfaceColor,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: classCardShadow(),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppPalette.inputBorderColor.withValues(alpha: 0.7),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: AppPalette.primaryBlue.withValues(alpha: 0.12),
-                  ),
-                  child: Icon(_icon, color: AppPalette.primaryBlue, size: 24),
-                ),
+                Icon(_icon, color: AppPalette.primaryBlue, size: 36),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -474,16 +614,15 @@ class _MaterialTile extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppPalette.authTextPrimaryColor,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Text(
-                        '$_label · Tap to open / download',
+                        _label,
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 14,
                           color: AppPalette.authTextSecondaryColor,
                         ),
                       ),
@@ -491,388 +630,26 @@ class _MaterialTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
-                  Icons.download_rounded,
-                  color: AppPalette.primaryBlue,
-                  size: 24,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ───────────────────────── assignment ─────────────────────────
-
-class _AssignmentSection extends StatelessWidget {
-  const _AssignmentSection({
-    required this.state,
-    required this.onSelect,
-    required this.onSubmit,
-  });
-
-  final LessonState state;
-  final void Function(String questionId, int optionIndex) onSelect;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    final unit = kClassSingular.toLowerCase();
-
-    // No assignment for this class
-    if (!state.hasAssignment) {
-      if (!state.videoDone) return const SizedBox.shrink();
-      return _InfoCard(
-        icon: Icons.check_circle_outline_rounded,
-        title: '$kClassSingular completed',
-        subtitle: 'There is no assignment for this $unit.',
-        isSuccess: true,
-      );
-    }
-
-    // Locked until the video ends
-    if (!state.videoDone) {
-      return const _InfoCard(
-        icon: Icons.lock_outline_rounded,
-        title: 'Assignment locked',
-        subtitle: 'Watch the full video to unlock the assignment.',
-      );
-    }
-
-    final reviewing = state.isSubmitted;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionTitle(
-          title: 'Assignment',
-          trailing:
-              '${state.totalMarks} ${state.totalMarks == 1 ? 'mark' : 'marks'}',
-        ),
-        const SizedBox(height: 12),
-        if (reviewing) ...[
-          _ResultCard(result: state.result!),
-          const SizedBox(height: 16),
-        ],
-        for (int i = 0; i < state.questions.length; i++)
-          _QuestionCard(
-            number: i + 1,
-            question: state.questions[i],
-            selected: state.answers[state.questions[i].id],
-            reviewing: reviewing,
-            onSelect: (index) => onSelect(state.questions[i].id, index),
-          ),
-        if (!reviewing) ...[
-          const SizedBox(height: 4),
-          _PrimaryButton(
-            label: state.allAnswered
-                ? 'Submit assignment'
-                : 'Answer all questions (${state.answeredCount}/${state.questions.length})',
-            enabled: state.allAnswered && !state.submitting,
-            loading: state.submitting,
-            onTap: onSubmit,
-          ),
-          const SizedBox(height: 32), // space below the submit button
-        ],
-      ],
-    );
-  }
-}
-
-class _ResultCard extends StatelessWidget {
-  const _ResultCard({required this.result});
-
-  final AssignmentResult result;
-
-  @override
-  Widget build(BuildContext context) {
-    final good = result.percent >= 50;
-    final color = good ? AppPalette.successColor : AppPalette.primaryBlue;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.emoji_events_rounded, size: 38, color: color),
-          const SizedBox(height: 6),
-          const Text(
-            'Your score',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppPalette.authTextSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '${result.score} / ${result.total}',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          Text(
-            '${result.percent}%',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-enum _OptionMode { idle, picked, correct, wrong }
-
-class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({
-    required this.number,
-    required this.question,
-    required this.selected,
-    required this.reviewing,
-    required this.onSelect,
-  });
-
-  final int number;
-  final AssignmentQuestion question;
-  final int? selected;
-  final bool reviewing;
-  final ValueChanged<int> onSelect;
-
-  _OptionMode _modeOf(int index) {
-    if (reviewing) {
-      if (index == question.correctIndex) return _OptionMode.correct;
-      if (index == selected) return _OptionMode.wrong;
-      return _OptionMode.idle;
-    }
-    return index == selected ? _OptionMode.picked : _OptionMode.idle;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final gotIt = reviewing && selected == question.correctIndex;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppPalette.authCardSurfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: classCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Question $number',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.primaryBlue,
-                  ),
-                ),
-              ),
-              Text(
-                '${question.marks} ${question.marks == 1 ? 'mark' : 'marks'}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppPalette.authTextSecondaryColor,
-                ),
-              ),
-              if (reviewing) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  gotIt ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                  size: 20,
-                  color: gotIt ? AppPalette.successColor : AppPalette.errorText,
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            question.text,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.authTextPrimaryColor,
-            ),
-          ),
-          const SizedBox(height: 6),
-          for (int i = 0; i < question.options.length; i++)
-            _OptionTile(
-              letter: String.fromCharCode(65 + i),
-              text: question.options[i],
-              mode: _modeOf(i),
-              onTap: reviewing ? null : () => onSelect(i),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OptionTile extends StatelessWidget {
-  const _OptionTile({
-    required this.letter,
-    required this.text,
-    required this.mode,
-    required this.onTap,
-  });
-
-  final String letter;
-  final String text;
-  final _OptionMode mode;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent;
-    switch (mode) {
-      case _OptionMode.picked:
-        accent = AppPalette.primaryBlue;
-      case _OptionMode.correct:
-        accent = AppPalette.successColor;
-      case _OptionMode.wrong:
-        accent = AppPalette.errorText;
-      case _OptionMode.idle:
-        accent = AppPalette.inputBorderColor;
-    }
-
-    final tinted = mode != _OptionMode.idle;
-
-    IconData? trailing;
-    switch (mode) {
-      case _OptionMode.picked:
-        trailing = Icons.radio_button_checked_rounded;
-      case _OptionMode.correct:
-        trailing = Icons.check_circle_rounded;
-      case _OptionMode.wrong:
-        trailing = Icons.cancel_rounded;
-      case _OptionMode.idle:
-        trailing = null;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: tinted ? accent.withValues(alpha: 0.10) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent, width: 1.5),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
                 Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tinted ? accent : Colors.transparent,
-                    border: Border.all(color: accent, width: 1.5),
+                    color: AppPalette.primaryBlue.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: tinted
-                          ? AppPalette.white
-                          : AppPalette.authTextSecondaryColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: AppPalette.authTextPrimaryColor,
-                    ),
-                  ),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: 8),
-                  Icon(trailing, size: 22, color: accent),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.enabled,
-    required this.loading,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool enabled;
-  final bool loading;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: enabled
-          ? AppPalette.primaryBlue
-          : AppPalette.inputBorderColor.withValues(alpha: 0.6),
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          child: Center(
-            child: loading
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: AppPalette.white,
-                    ),
-                  )
-                : Text(
-                    label,
+                  child: const Text(
+                    'View',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: enabled
-                          ? AppPalette.white
-                          : AppPalette.authTextSecondaryColor,
+                      color: AppPalette.primaryBlue,
                     ),
                   ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -880,66 +657,113 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.isError = false,
-    this.isSuccess = false,
-    this.actionLabel,
-    this.onAction,
-  });
+// ───────────────────────── assignment card ─────────────────────────
 
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final bool isError;
-  final bool isSuccess;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+class _AssignmentCard extends StatelessWidget {
+  const _AssignmentCard({required this.state, required this.onOpen});
+
+  final LessonState state;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = isSuccess
-        ? AppPalette.successColor
-        : AppPalette.primaryBlue;
+    final submitted = state.isSubmitted;
+    final unlocked = state.videoDone;
+
+    final String badge;
+    final Color badgeColor;
+    if (submitted) {
+      badge = 'Completed';
+      badgeColor = AppPalette.successColor;
+    } else if (unlocked) {
+      badge = 'Pending';
+      badgeColor = AppPalette.primaryBlue;
+    } else {
+      badge = 'Locked';
+      badgeColor = AppPalette.hintTextColor;
+    }
+
+    final String subtitle = submitted
+        ? 'Score ${state.result!.score}/${state.result!.total}'
+        : '${state.totalMarks} ${state.totalMarks == 1 ? 'mark' : 'marks'}';
+
+    final String label = submitted
+        ? 'View Result'
+        : unlocked
+        ? 'Start Assignment'
+        : 'Watch all videos to unlock';
 
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppPalette.authCardSurfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: classCardShadow(),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppPalette.inputBorderColor.withValues(alpha: 0.7),
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(icon, size: 40, color: iconColor),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: isError
-                  ? AppPalette.errorText
-                  : AppPalette.authTextPrimaryColor,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppPalette.authTextSecondaryColor,
+          Row(
+            children: [
+              const Icon(
+                Icons.assignment_outlined,
+                size: 38,
+                color: AppPalette.primaryBlue,
               ),
-            ),
-          ],
-          if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Class Assignment',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.authTextPrimaryColor,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppPalette.authTextSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: badgeColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LessonPrimaryButton(
+            label: label,
+            enabled: unlocked || submitted,
+            onTap: onOpen,
+            trailingIcon: (unlocked || submitted)
+                ? Icons.arrow_forward_rounded
+                : Icons.lock_outline_rounded,
+          ),
         ],
       ),
     );

@@ -13,6 +13,7 @@ Future<void> initDependencies() async {
   _initSplashDependencies();
   _initProfileDependencies();
   _initClassesDependencies();
+  _initEventsDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -132,8 +133,18 @@ void _initClassesDependencies() {
   }
   if (!serviceLocator.isRegistered<LessonBloc>()) {
     serviceLocator.registerFactory<LessonBloc>(
-      () => LessonBloc(service: serviceLocator<ClassDetailService>(), classId: '', lessonId: '', videoDone:false),
+      () => LessonBloc(service: serviceLocator<ClassDetailService>(), classId: '', lessonId: '', videoDone:false, videoIds: []),
     );
   }
 
 }
+
+     void _initEventsDependencies() {
+       if (!serviceLocator.isRegistered<EventsService>()) {
+         serviceLocator.registerLazySingleton<EventsService>(() => EventsService());
+       }
+       if (!serviceLocator.isRegistered<EventsBloc>()) {
+         serviceLocator.registerFactory<EventsBloc>(
+           () => EventsBloc(service: serviceLocator<EventsService>()));
+       }
+     }

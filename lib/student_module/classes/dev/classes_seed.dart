@@ -2,20 +2,52 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:game_edu/core/config/server_config.dart';
 
-/// One lesson: _Lesson('Title', minutes, 'video link')
-/// The video link is optional. Leave '' to use a sample test video.
+/// One video of a lesson:
+///   _Video('Title', seconds, 'video link', 'thumbnail image link')
+/// Leave the video link '' to use a sample test video.
+/// Leave the thumbnail '' to use the YouTube thumbnail (YouTube links only).
+class _Video {
+  const _Video(this.title, this.seconds, [this.url = '', this.thumbnailUrl = '']);
+
+  final String title;
+  final int seconds;
+  final String url;
+  final String thumbnailUrl;
+}
+
+/// One lesson (= one class page):
+///   _Lesson('Title', minutes, 'video link', 'About text',
+///           takeaways, videos, materials, imageUrl)
+///
+///  * videos     : the "Lesson Videos" list. If empty, ONE video is made from
+///                 the title / minutes / video link.
+///  * takeaways  : the "Key Takeaways" bullets (optional).
+///  * materials  : the study notes files (optional), for example
+///                 {'title': 'Game Design Notes', 'url': 'https://...pdf', 'type': 'pdf'}
+///                 Only written when not empty, so materials you added by hand
+///                 are not touched.
 class _Lesson {
   const _Lesson(
     this.title,
     this.minutes, [
     this.videoUrl = '',
     this.description = '',
+    this.takeaways = const <String>[],
+    this.videos = const <_Video>[],
+    this.materials = const <Map<String, String>>[],
+    this.imageUrl = '',
   ]);
 
   final String title;
   final int minutes;
   final String videoUrl;
   final String description;
+  final List<String> takeaways;
+  final List<_Video> videos;
+  final List<Map<String, String>> materials;
+
+  /// Picture at the top of the class page (image link). '' = course thumbnail.
+  final String imageUrl;
 }
 
 /// One multiple-choice question:
@@ -42,6 +74,7 @@ class _Class {
     required this.ends,
     required this.lessons,
     this.college,
+    this.imageUrl = '',
   });
 
   final String id; // document id (same id again = overwrite, no duplicate)
@@ -53,6 +86,10 @@ class _Class {
   final DateTime ends;
   final String? college; // null = general (everyone)
   final List<_Lesson> lessons;
+
+  /// Top picture for ALL lessons of this class (optional).
+  /// Order: lesson image -> this image -> _defaultImageUrl.
+  final String imageUrl;
 }
 
 /// IST date/time -> DateTime (stored in Firestore as a timestamp).
@@ -70,6 +107,24 @@ const List<String> _sampleVideos = [
   'https://youtu.be/v5p_SUfi710?si=qXh5_pZf_lG1mSDH',
   'https://youtu.be/kArGE1-vRrw?si=zdqV_ZDwXzm6zhz4',
 ];
+
+/// Picture at the TOP of every class page, when the lesson and its class have
+/// no image of their own. Paste your image link here.
+const String _defaultImageUrl =
+    'https://res.cloudinary.com/dtz0urit6/image/upload/q_auto:best,f_jpg/cloudinary-tools-uploads/v9eyvikjmhoq8myb7tg5';
+
+/// "Key Takeaways" of every lesson that has none of its own.
+/// Replace these lines with your real text (or give a lesson its own list).
+const List<String> _defaultTakeaways = [
+  'Watch every lesson video to the end.',
+  'Read the study notes before the assignment.',
+  'Finish the assignment to complete this class.',
+];
+
+/// Study notes file (PDF link) given to every lesson that has none of its own.
+/// Paste a real PDF link here. Empty = no file row is added.
+const String _defaultMaterialUrl = '';
+const String _defaultMaterialTitle = 'Class Notes';
 
 // All seeded lessons use the same assignment (15 questions, 17 marks).
 const List<_Q> _assignmentQuestions = [
@@ -226,7 +281,39 @@ class ClassesSeed {
         starts: _ist(2026, 11, 25, 11),
         ends: _ist(2026, 11, 25, 12),
         lessons: const [
-          _Lesson('Track layout basics', 10, ''), // <- video link
+          _Lesson(
+            'Track Layout Basics',
+            15,
+            '',
+            'Learn how straights and corners shape a track, and where to brake, turn in, and accelerate.',
+            [
+              'Straights are for building speed.',
+              'The apex is the inside point of a corner.',
+              'Brake before the turn, then accelerate on exit.',
+            ],
+            [
+              // video link '' = sample test video; last value = thumbnail image
+              _Video(
+                'Track Layout Overview',
+                522,
+                '',
+                _defaultImageUrl,
+              ),
+              _Video(
+                'Corners & Racing Lines',
+                375,
+                '',
+                _defaultImageUrl,
+              ),
+            ],
+            // study notes files (optional)
+            // [
+            //   {'title': 'Game Design Notes', 'url': 'https://...pdf', 'type': 'pdf'},
+            // ],
+            const <Map<String, String>>[],
+            // picture at the TOP of the class page
+            _defaultImageUrl,
+          ),
           _Lesson('Corners and elevation', 15, ''),
           _Lesson('Racing line and flow', 12, ''),
           _Lesson('Testing your track', 10, ''),
@@ -408,15 +495,68 @@ class ClassesSeed {
         final lessonId = 'lesson_${(i + 1).toString().padLeft(2, '0')}';
         final lessonRef = classRef.collection('lessons').doc(lessonId);
 
+        // the videos of this lesson (own links win, otherwise sample videos)
+        final videos = <Map<String, dynamic>>[];
+        if (l.videos.isEmpty) {
+          videos.add({
+            'id': 'video_01',
+            'title': l.title,
+            'url': l.videoUrl.isNotEmpty
+                ? l.videoUrl
+                : _sampleVideos[lessonCount % _sampleVideos.length],
+            'durationSeconds': l.minutes * 60,
+          });
+        } else {
+          for (var v = 0; v < l.videos.length; v++) {
+            final video = l.videos[v];
+            videos.add({
+              'id': 'video_${(v + 1).toString().padLeft(2, '0')}',
+              'title': video.title,
+              'url': video.url.isNotEmpty
+                  ? video.url
+                  : _sampleVideos[(lessonCount + v) % _sampleVideos.length],
+              'durationSeconds': video.seconds,
+              if (video.thumbnailUrl.isNotEmpty)
+                'thumbnailUrl': video.thumbnailUrl,
+            });
+          }
+        }
+
+        // top picture: lesson image -> class image -> default image
+        final image = l.imageUrl.isNotEmpty
+            ? l.imageUrl
+            : c.imageUrl.isNotEmpty
+            ? c.imageUrl
+            : _defaultImageUrl;
+
+        // everything a class page needs: own value -> class value -> default
+        final about = l.description.isNotEmpty ? l.description : c.description;
+        final takeaways = l.takeaways.isNotEmpty
+            ? l.takeaways
+            : _defaultTakeaways;
+        final materials = l.materials.isNotEmpty
+            ? l.materials
+            : _defaultMaterialUrl.isNotEmpty
+            ? [
+                {
+                  'title': _defaultMaterialTitle,
+                  'url': _defaultMaterialUrl,
+                  'type': 'pdf',
+                },
+              ]
+            : const <Map<String, String>>[];
+
         await writer.set(lessonRef, {
           'title': l.title,
-          'description': l.description,
+          'description': about,
           'order': i + 1,
           'durationMinutes': l.minutes,
-          // your own link wins, otherwise a sample test video
-          'videoUrl': l.videoUrl.isNotEmpty
-              ? l.videoUrl
-              : _sampleVideos[lessonCount % _sampleVideos.length],
+          // old single-video field = the first video (kept for old app builds)
+          'videoUrl': videos.first['url'],
+          'videos': videos,
+          if (image.isNotEmpty) 'imageUrl': image,
+          if (takeaways.isNotEmpty) 'keyTakeaways': takeaways,
+          if (materials.isNotEmpty) 'materials': materials,
         });
         lessonCount++;
 
