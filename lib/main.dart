@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // ADDED
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
@@ -40,6 +41,18 @@ import 'core/localization/merged_asset_loader.dart';
 
 /// Root Navigator
 final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADDED: Background / terminated FCM handler.
+// Must be a top-level function (NOT inside a class).
+// ─────────────────────────────────────────────────────────────────────────────
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  debugPrint('🔔 Background message: ${message.data}');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Singleton that lives for the entire app lifetime.
@@ -146,11 +159,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await clearAuthOnFreshInstall();
 
-  // await NotificationService.initializeNotificationListeners();
-  // NotificationService.listenToTokenRefresh();
-  // NotificationService.listenToAuthForToken();
+  // ADDED: register background handler (not supported on web)
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
+
+  await clearAuthOnFreshInstall();
 
   FlutterError.onError = (errorDetails) {
     FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
@@ -181,20 +196,16 @@ void main() async {
       assetLoader: const MergedAssetLoader([
         LocalizationAssetsConstants.welcomeScreen,
         LocalizationAssetsConstants.profile,
-      
       ]),
 
-      
-        child: BlocProvider(
-          create: (context) => LanguageCubit(),
-          child: const MyApp(),
-        ),
+      child: BlocProvider(
+        create: (context) => LanguageCubit(),
+        child: const MyApp(),
       ),
-    );
+    ),
+  );
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    NotificationService.initializeToken();
-  });
+  // NOTE: NotificationService.init() moved to MyApp.initState()
 }
 
 class MyApp extends StatefulWidget {
@@ -211,9 +222,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   DeepLinkService.instance.init(rootNavKey);
-    // });
+
+    // ADDED: initialize notifications after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await NotificationService.init();
+        debugPrint('🔔 NotificationService initialized successfully');
+      } catch (e, st) {
+        debugPrint('🔔 NotificationService initialization failed: $e');
+        debugPrint('$st');
+      }
+    });
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
       debugPrint("🔄 [MyApp] AUTH CHANGE -> ${user?.uid}");
@@ -253,12 +272,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         BlocProvider(
           create: (_) => serviceLocator<ConfirmPasswordVisibilityCubit>(),
         ),
-         BlocProvider(
-          create: (_) => serviceLocator<AuthBloc>(),
-        ),
-           BlocProvider(
-          create: (_) => serviceLocator<ClassesBloc>(),
-        ),
+        BlocProvider(create: (_) => serviceLocator<AuthBloc>()),
+        BlocProvider(create: (_) => serviceLocator<ClassesBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -288,49 +303,48 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 Uri.base.queryParameters['oobCode'] != null
             ? Uri.base.toString()
             : RouterPath.splash,
-     builder: (context, child) {
-  final page = PopScope(
-    canPop: false,
-    child: child ?? const SizedBox(),
-  );
+        builder: (context, child) {
+          final page = PopScope(
+            canPop: false,
+            child: child ?? const SizedBox(),
+          );
 
-  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-    return page;
-  }
+          if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+            return page;
+          }
 
-  const navigationBarColor = AppPalette.textOnPrimaryColor;
-  final bottomInset = MediaQuery.paddingOf(context).bottom;
+          const navigationBarColor = AppPalette.textOnPrimaryColor;
+          final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-  return AnnotatedRegion<SystemUiOverlayStyle>(
-    value: const SystemUiOverlayStyle(
-      systemNavigationBarColor: navigationBarColor,
-      systemNavigationBarIconBrightness: Brightness.dark,
-      systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarContrastEnforced: false,
-    ),
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        page,
-        if (bottomInset > 0)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: bottomInset,
-            child: const IgnorePointer(
-              child: ColoredBox(color: navigationBarColor),
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(
+              systemNavigationBarColor: navigationBarColor,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemNavigationBarDividerColor: Colors.transparent,
+              systemNavigationBarContrastEnforced: false,
             ),
-          ),
-      ],
-    ),
-  );
-},
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                page,
+                if (bottomInset > 0)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: bottomInset,
+                    child: const IgnorePointer(
+                      child: ColoredBox(color: navigationBarColor),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 }
-
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -361,15 +375,11 @@ class CheckUserExists {
         .doc(uid)
         .get();
 
-    debugPrint(
-      'User document exists: ${doc.exists}',
-    );
+    debugPrint('User document exists: ${doc.exists}');
 
     return doc.exists;
   }
 }
-
-
 
 Future<void> clearAuthOnFreshInstall() async {
   final prefs = await SharedPreferences.getInstance();

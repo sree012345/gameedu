@@ -13,9 +13,11 @@ import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/main.dart';
 
 import 'package:game_edu/student_module/auth/presentation/login_page.dart';
+import 'package:game_edu/student_module/contact/presentation/contact_us_page.dart';
 import 'package:game_edu/student_module/create_profile/presentation/create_profile_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/dashboard_page.dart';
 import 'package:game_edu/student_module/dashboard/presentation/coming_soon_page.dart';
+import 'package:game_edu/student_module/faq/presentation/faq_page.dart';
 import 'package:game_edu/student_module/profile/presentation/edit_profile_page.dart';
 import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
 import 'package:game_edu/student_module/splash/presentation/splash_page.dart';
@@ -131,6 +133,22 @@ case RouterPath.editProfile:
           settings,
           const DashboardPage(),
           name: RouterPath.home,
+        );
+           case RouterPath.faq:
+        debugPrint('[AppRouter] Opening DashboardPage');
+
+        return _material(
+          settings,
+          const FaqPage(),
+          name: RouterPath.faq,
+        );
+           case RouterPath.contactUs:
+        debugPrint('[AppRouter] Opening DashboardPage');
+
+        return _material(
+          settings,
+          const ContactUsPage(),
+          name: RouterPath.contactUs,
         );
 
       // Unrecognized routes.

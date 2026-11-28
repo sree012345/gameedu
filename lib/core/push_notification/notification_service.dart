@@ -16,12 +16,18 @@ import 'package:game_edu/core/push_notification/params/current_route_track.dart'
 import 'package:game_edu/core/push_notification/params/notification_platform_key_params.dart';
 import 'package:game_edu/core/routes/router.dart';
 import 'package:game_edu/main.dart';
+import 'package:game_edu/student_module/community/notification/community_notification_handler.dart';
 
 import '../routes/router_path.dart';
 
+// Update this import if your CommunityNotificationHandler
+// is stored in a different folder.
 class NotificationService {
   static StreamSubscription<String>? _tokenRefreshSubscription;
   static StreamSubscription<User?>? _authSubscription;
+
+  static StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  static StreamSubscription<RemoteMessage>? _openedAppSubscription;
 
   static final FirebaseFirestore _firestore =
       FirebaseFirestore.instance;
@@ -29,6 +35,8 @@ class NotificationService {
   static AuthorizationStatus? _lastAuthStatus;
   static String? _lastKnownToken;
   static String? _lastSyncedUid;
+
+  static bool _notificationListenersInitialized = false;
 
   static void _log(String message) {
     debugPrint('🔔 [NotificationService] $message');
@@ -48,6 +56,8 @@ class NotificationService {
     listenToTokenRefresh();
 
     listenToAuthForToken();
+
+    _log('NotificationService initialized successfully');
   }
 
   // ============================================================
@@ -117,11 +127,8 @@ class NotificationService {
         FirebaseAuth.instance.authStateChanges().listen(
       (user) async {
         if (user != null) {
-          _log(
-            'Auth changed -> logged in (${user.uid})',
-          );
+          _log('Auth changed -> logged in (${user.uid})');
 
-          // A different user must always sync their token.
           if (_lastSyncedUid != user.uid) {
             _lastKnownToken = null;
             _lastAuthStatus = null;
@@ -181,9 +188,7 @@ class NotificationService {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _log(
-        'refreshTokenNow: no user logged in, skipping',
-      );
+      _log('refreshTokenNow: no user logged in, skipping');
       return;
     }
 
@@ -196,9 +201,7 @@ class NotificationService {
       if (status == _lastAuthStatus &&
           _lastKnownToken != null &&
           _lastSyncedUid == user.uid) {
-        _log(
-          'refreshTokenNow: permission and token unchanged',
-        );
+        _log('refreshTokenNow: permission and token unchanged');
         return;
       }
 
@@ -207,9 +210,7 @@ class NotificationService {
           status == AuthorizationStatus.provisional;
 
       if (!allowed) {
-        _log(
-          'refreshTokenNow: permission not granted',
-        );
+        _log('refreshTokenNow: permission not granted');
         _lastAuthStatus = status;
         return;
       }
@@ -221,18 +222,14 @@ class NotificationService {
       );
 
       if (token == null || token.isEmpty) {
-        _log(
-          'refreshTokenNow: token null or empty',
-        );
+        _log('refreshTokenNow: token null or empty');
         return;
       }
 
       if (token == _lastKnownToken &&
           _lastSyncedUid == user.uid) {
         _lastAuthStatus = status;
-        _log(
-          'refreshTokenNow: token unchanged, skipping write',
-        );
+        _log('refreshTokenNow: token unchanged, skipping write');
         return;
       }
 
@@ -257,9 +254,7 @@ class NotificationService {
         'skipping Firestore write',
       );
 
-      await NotificationSharedService
-          .storePnsDeviceToken(token);
-
+      await NotificationSharedService.storePnsDeviceToken(token);
       return;
     }
 
@@ -271,17 +266,14 @@ class NotificationService {
         '${ServerConfig.usersCollection}/$uid',
       );
 
-     await _usersCollection.doc(uid).set({
-  'pushToken': token,
-}, SetOptions(merge: true));
+      await _usersCollection.doc(uid).set({
+        'pushToken': token,
+      }, SetOptions(merge: true));
 
-      // Mark as synced only after successful write.
       _lastKnownToken = token;
       _lastSyncedUid = uid;
 
-      _log(
-        'Firestore pushToken updated successfully',
-      );
+      _log('Firestore pushToken updated successfully');
     } on FirebaseException catch (e, st) {
       _log(
         '_persistToken Firestore ERROR => '
@@ -293,9 +285,7 @@ class NotificationService {
       _log('$st');
     }
 
-    // Preserve existing local token storage.
-    await NotificationSharedService
-        .storePnsDeviceToken(token);
+    await NotificationSharedService.storePnsDeviceToken(token);
   }
 
   // ============================================================
@@ -316,9 +306,7 @@ class NotificationService {
 
         if (settings.authorizationStatus !=
             AuthorizationStatus.authorized) {
-          _log(
-            'Web notification permission not granted',
-          );
+          _log('Web notification permission not granted');
           return;
         }
       }
@@ -334,7 +322,6 @@ class NotificationService {
         return;
       }
 
-      // Avoid printing the full device token.
       _log('FCM token generated successfully');
 
       await _persistToken(token);
@@ -361,68 +348,171 @@ class NotificationService {
   // ============================================================
 
   static Future<void> initializeNotificationListeners() async {
-    // Background notification tapped.
-    FirebaseMessaging.onMessageOpenedApp.listen(
+    // Prevent duplicate FCM listeners.
+    if (_notificationListenersInitialized) {
+      _log('Notification listeners already initialized');
+      return;
+    }
+
+    _notificationListenersInitialized = true;
+
+    // ----------------------------------------------------------
+    // Background notification tapped while app is running.
+    // ----------------------------------------------------------
+
+    _openedAppSubscription =
+        FirebaseMessaging.onMessageOpenedApp.listen(
       _handleMessage,
+      onError: (error) {
+        _log('onMessageOpenedApp ERROR => $error');
+      },
     );
 
+    // ----------------------------------------------------------
     // Foreground notification.
-    FirebaseMessaging.onMessage.listen((message) {
-      _log(
-        'Foreground message: ${message.data}',
-      );
+    // ----------------------------------------------------------
 
-      if (message.data['type'] == 'incoming_call' ||
-          message.data['type'] == 'group_call') {
-        if (!kIsWeb) {
-          // Existing CallKit integration can be enabled here.
+    _foregroundSubscription =
+        FirebaseMessaging.onMessage.listen(
+      (message) async {
+        _log('Foreground message: ${message.data}');
+
+        // ------------------------------------------------------
+        // 1. COMMUNITY NOTIFICATION
+        // ------------------------------------------------------
+
+        final communityHandled =
+            await CommunityNotificationHandler.onForegroundMessage(
+          message,
+          showLocal: (
+            int id,
+            String title,
+            String body,
+            String payload,
+          ) async {
+            final context = rootNavKey.currentContext;
+
+            if (context == null) {
+              _log(
+                'Community notification: '
+                'Navigator context unavailable',
+              );
+              return;
+            }
+
+            // Uses your existing in-app overlay.
+            // This is not an OS-level local notification.
+            InAppOverlayNotification.show(
+              context: context,
+              title: title,
+              body: body,
+              onOpen: () {
+                final data =
+                    CommunityNotificationHandler.decodePayload(
+                  payload,
+                );
+
+                if (data != null) {
+                  CommunityNotificationHandler.handleTap(
+                    data,
+                    rootNavKey,
+                  );
+                }
+              },
+            );
+          },
+        );
+
+        if (communityHandled) {
+          _log('Community foreground notification handled');
+          return;
         }
 
-        _log(
-          'Call notification: ${message.data}',
+        // ------------------------------------------------------
+        // 2. EXISTING CALL NOTIFICATIONS
+        // ------------------------------------------------------
+
+        if (message.data['type'] == 'incoming_call' ||
+            message.data['type'] == 'group_call') {
+          if (!kIsWeb) {
+            // Existing CallKit integration can be enabled here.
+          }
+
+          _log('Call notification: ${message.data}');
+          return;
+        }
+
+        // ------------------------------------------------------
+        // 3. EXISTING NORMAL NOTIFICATIONS
+        // ------------------------------------------------------
+
+        final notification = message.notification;
+
+        if (notification == null) return;
+
+        if (!NotificationRouteGuard
+            .allowForegroundNotification) {
+          return;
+        }
+
+        final notifType =
+            message.data['type'] as String?;
+
+        final notifRoute =
+            message.data['route'] as String?;
+
+        if (_shouldSuppress(
+          currentRoute: CurrentRouteTracker.currentRoute,
+          notifRoute: notifRoute,
+          notifType: notifType,
+        )) {
+          return;
+        }
+
+        final context = rootNavKey.currentContext;
+
+        if (context == null) {
+          _log(
+            'Navigator context unavailable, '
+            'skipping overlay',
+          );
+          return;
+        }
+
+        InAppOverlayNotification.show(
+          context: context,
+          title: notification.title ?? 'Notification',
+          body: notification.body ?? '',
+          onOpen: () => _handleMessage(message),
         );
-        return;
-      }
+      },
+      onError: (error) {
+        _log('Foreground notification ERROR => $error');
+      },
+    );
 
-      final notification = message.notification;
+    // ----------------------------------------------------------
+    // 4. APP TERMINATED AND OPENED THROUGH NOTIFICATION
+    // ----------------------------------------------------------
 
-      if (notification == null) return;
+    try {
+      final initialMessage =
+          await FirebaseMessaging.instance.getInitialMessage();
 
-      if (!NotificationRouteGuard
-          .allowForegroundNotification) {
-        return;
-      }
-
-      final notifType =
-          message.data['type'] as String?;
-
-      final notifRoute =
-          message.data['route'] as String?;
-
-      if (_shouldSuppress(
-        currentRoute: CurrentRouteTracker.currentRoute,
-        notifRoute: notifRoute,
-        notifType: notifType,
-      )) {
-        return;
-      }
-
-      final context = rootNavKey.currentContext;
-      if (context == null) {
+      if (initialMessage != null) {
         _log(
-          'Navigator context unavailable, '
-          'skipping overlay',
+          'App opened from terminated state: '
+          '${initialMessage.data}',
         );
-        return;
-      }
 
-      InAppOverlayNotification.show(
-        context: context,
-        title: notification.title ?? 'Notification',
-        body: notification.body ?? '',
-        onOpen: () => _handleMessage(message),
-      );
-    });
+        _handleMessage(initialMessage);
+      }
+    } catch (e, st) {
+      _log('getInitialMessage ERROR => $e');
+      _log('$st');
+    }
+
+    _log('All notification listeners initialized');
   }
 
   // ============================================================
@@ -480,6 +570,16 @@ class NotificationService {
       return;
     }
 
+    // Community notification navigation.
+    if (CommunityNotificationHandler.handleTap(
+      data,
+      rootNavKey,
+    )) {
+      _log('Community notification navigation handled');
+      return;
+    }
+
+    // Existing notification navigation.
     _handleNavigation(data);
   }
 

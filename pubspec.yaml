@@ -52,6 +52,8 @@ dependencies:
   youtube_player_flutter: ^9.1.3
   syncfusion_flutter_pdfviewer: ^33.2.13
   pdfrx: ^2.2.24
+  cached_network_image: ^3.4.1
+  audioplayers: ^6.7.1
 
 # ----------------------------------------
 # DEV DEPENDENCIES

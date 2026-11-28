@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 
 class InAppOverlayNotification {
   static OverlayEntry? _entry;
+  static Timer? _timer;
 
   static void show({
     required BuildContext context,
@@ -10,10 +14,22 @@ class InAppOverlayNotification {
     required String body,
     required VoidCallback onOpen,
   }) {
-    if (_entry != null) return;
+    debugPrint('🔔 [Overlay] show() called: $title / $body');
 
-    final overlay = Navigator.of(context, rootNavigator: true).overlay;
-    if (overlay == null) return;
+    // Replace any banner already on screen (instead of ignoring the new one).
+    hide();
+
+    OverlayState? overlay;
+    try {
+      overlay = Navigator.of(context, rootNavigator: true).overlay;
+    } catch (e) {
+      debugPrint('🔔 [Overlay] ERROR finding navigator: $e');
+    }
+
+    if (overlay == null) {
+      debugPrint('🔔 [Overlay] ❌ overlay is null, cannot show');
+      return;
+    }
 
     _entry = OverlayEntry(
       builder: (_) => _OverlayBanner(
@@ -25,12 +41,20 @@ class InAppOverlayNotification {
     );
 
     overlay.insert(_entry!);
+    debugPrint('🔔 [Overlay] ✅ inserted');
 
-    Future.delayed(const Duration(seconds: 10), hide);
+    _timer = Timer(const Duration(seconds: 10), hide);
   }
 
   static void hide() {
-    _entry?.remove();
+    _timer?.cancel();
+    _timer = null;
+
+    try {
+      _entry?.remove();
+    } catch (e) {
+      debugPrint('🔔 [Overlay] remove error (ignored): $e');
+    }
     _entry = null;
   }
 }
@@ -103,14 +127,13 @@ class _OverlayBannerState extends State<_OverlayBanner>
           position: _offset,
           child: Material(
             elevation: 6,
-
             borderRadius: BorderRadius.circular(14),
             color: AppPalette.cardSurfaceColor,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppPalette.inputBorderColor, // 👈 your border color
+                  color: AppPalette.inputBorderColor,
                   width: 1,
                 ),
               ),

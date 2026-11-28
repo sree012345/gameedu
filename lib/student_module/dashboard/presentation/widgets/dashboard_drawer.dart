@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
-
 import '../../bloc/dashboard_bloc.dart';
 import '../../models/dashboard_user.dart';
 
@@ -61,11 +60,6 @@ class DashboardDrawer extends StatelessWidget {
                     item(DashboardMenu.home, Icons.home_outlined, 'Home'),
                     item(DashboardMenu.courses, Icons.layers_outlined, 'Classes'),
                     item(
-                      DashboardMenu.myLearning,
-                      Icons.smart_display_outlined,
-                      'My Learning',
-                    ),
-                    item(
                       DashboardMenu.events,
                       Icons.calendar_month_outlined,
                       'Events',
@@ -73,7 +67,7 @@ class DashboardDrawer extends StatelessWidget {
                     item(
                       DashboardMenu.chat,
                       Icons.chat_bubble_outline_rounded,
-                      'Chat',
+                      'Community',
                       badge: state.unreadChatCount,
                     ),
                     const _DrawerDivider(),
@@ -83,14 +77,14 @@ class DashboardDrawer extends StatelessWidget {
                       'Profile',
                     ),
                     item(
-                      DashboardMenu.help,
+                      DashboardMenu.faq,
                       Icons.help_outline_rounded,
-                      'Help & Support',
+                      'Faq',
                     ),
                     item(
-                      DashboardMenu.about,
+                      DashboardMenu.contactUs,
                       Icons.info_outline_rounded,
-                      'About Game Edu',
+                      'Contact Us',
                     ),
                     const _DrawerDivider(),
                     _LogoutItem(

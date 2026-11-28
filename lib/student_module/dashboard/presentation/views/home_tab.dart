@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/core/routes/router_path.dart';
-
 import '../../bloc/dashboard_bloc.dart';
 
 List<BoxShadow> _cardShadow() => [
@@ -56,38 +55,6 @@ class HomeTab extends StatelessWidget {
               ],
               const SizedBox(height: 16),
               _ContinueLearningCard(onBrowse: () => goTab(DashboardTab.courses)),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  _QuickAction(
-                    icon: Icons.videocam_outlined,
-                    label: 'Classes',
-                    color: AppPalette.primaryBlue,
-                    onTap: () => open(RouterPath.classes),
-                  ),
-                  const SizedBox(width: 10),
-                  _QuickAction(
-                    icon: Icons.assignment_outlined,
-                    label: 'Assignments',
-                    color: AppPalette.accentGold,
-                    onTap: () => open(RouterPath.assignments),
-                  ),
-                  const SizedBox(width: 10),
-                  _QuickAction(
-                    icon: Icons.folder_outlined,
-                    label: 'Resources',
-                    color: AppPalette.successColor,
-                    onTap: () => open(RouterPath.resources),
-                  ),
-                  const SizedBox(width: 10),
-                  _QuickAction(
-                    icon: Icons.groups_outlined,
-                    label: 'Community',
-                    color: AppPalette.accentCyan,
-                    onTap: () => goTab(DashboardTab.community),
-                  ),
-                ],
-              ),
               const SizedBox(height: 22),
               _SectionHeader(
                 title: 'Live Class Today',
@@ -254,67 +221,6 @@ class _ContinueLearningCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: AppPalette.authCardSurfaceColor,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: _cardShadow(),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withValues(alpha: 0.15),
-                  ),
-                  child: Icon(icon, size: 22, color: color),
-                ),
-                const SizedBox(height: 8),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppPalette.authTextPrimaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

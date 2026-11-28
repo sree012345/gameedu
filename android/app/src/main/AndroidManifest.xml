@@ -1,9 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ADD: permissions (above <application>) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
-  
+
+    <!-- ADDED: Android 13+ notification permission -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- ADDED: needed because main.dart calls Permission.ignoreBatteryOptimizations.request() -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
     <application
         android:label="Game Edu"
         android:name="${applicationName}"
@@ -25,7 +30,24 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- ADDED: lets notification taps open the app with the message data -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
         </activity>
+
+        <!-- ADDED: default notification icon (use a white transparent icon) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
+
+        <!-- ADDED: default channel for notifications -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel"/>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
@@ -36,10 +58,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!--  ADD: camera intent (inside the existing <queries>) -->
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
     </queries>
-    
+
 </manifest>

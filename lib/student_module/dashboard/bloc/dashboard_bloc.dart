@@ -1,10 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/core/routes/router_path.dart';
-
 import '../models/dashboard_user.dart';
 import '../services/dashboard_service.dart';
-
 part 'dashboard_event.dart';
 part 'dashboard_state.dart';
 
@@ -63,16 +61,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       case DashboardMenu.profile:
         emit(state.copyWith(tabIndex: DashboardTab.profile));
       // Everything else opens its own screen
-      case DashboardMenu.careers:
-        _go(emit, RouterPath.careers);
+   
       case DashboardMenu.myLearning:
         _go(emit, RouterPath.myLearning);
       case DashboardMenu.chat:
-        _go(emit, RouterPath.message);
-      case DashboardMenu.help:
-        _go(emit, RouterPath.helpSupport);
-      case DashboardMenu.about:
-        _go(emit, RouterPath.aboutApp);
+          emit(state.copyWith(tabIndex: DashboardTab.community));
+      case DashboardMenu.faq:
+        _go(emit, RouterPath.faq);
+      case DashboardMenu.contactUs:
+        _go(emit, RouterPath.contactUs);
        
         
     }
