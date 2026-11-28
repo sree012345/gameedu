@@ -12,14 +12,13 @@ enum DashboardStatus {
 /// Items of the left menu.
 enum DashboardMenu {
   home,
-  careers,
   courses,
   myLearning,
   events,
   chat,
   profile,
-  help,
-  about,
+  faq,
+  contactUs,
 }
 
 /// Bottom navigation indexes.

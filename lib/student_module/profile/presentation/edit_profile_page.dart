@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
+import 'package:game_edu/core/widgets/buttons/medium_button.dart';
 import 'package:game_edu/init_dependencies.dart'; // exports serviceLocator
 import 'package:game_edu/student_module/create_profile/constants/profile_constants.dart';
 import 'package:game_edu/student_module/create_profile/models/user_profile.dart';
@@ -149,11 +150,10 @@ class _EditProfileViewState extends State<_EditProfileView> {
                                 ),
                               ),
                             ),
-                          ProfileActionButton(
+                          MediumButton(
                             text: 'Save Changes',
-                            icon: Icons.arrow_forward_rounded,
-                            loading: state.isSaving,
-                            onTap: () {
+                            isLoading: state.isSaving,
+                            onPressed: () {
                               FocusScope.of(context).unfocus();
                               bloc.add(const EditSavePressed());
                             },

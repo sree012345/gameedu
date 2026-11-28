@@ -1,4 +1,3 @@
-
 enum Environment {
   dev,
   qa,
@@ -9,15 +8,22 @@ enum Environment {
 class ServerConfig {
   ServerConfig._();
 
-  // Change environment here
   static const Environment environment = Environment.dev;
 
-  // Firebase Firestore Collections
   static String get usersCollection => '${environment.name}_users';
 
-  // Classes (lessons live inside each class: .../{classId}/lessons)
   static String get classesCollection => '${environment.name}_classes';
 
-   static String get eventsCollection => '${environment.name}_events';
-     static String get eventRegistrationsCollection => '${environment.name}_event_registrations';
+  static String get eventsCollection => '${environment.name}_events';
+
+  static String get eventRegistrationsCollection =>
+      '${environment.name}_event_registrations';
+
+  // Community feature
+  static String get communitiesCollection =>
+      '${environment.name}_communities';
+
+  static String get communityStorageRoot =>
+      '${environment.name}_communities';
+   static String get supportMessagesCollection => '${environment.name}_support_messages';
 }

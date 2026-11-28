@@ -1,1 +1,31 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"game-edu-617ff","appId":"1:106712931865:android:2dd6932fc20d6cb596d488","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"game-edu-617ff","configurations":{"android":"1:106712931865:android:2dd6932fc20d6cb596d488","ios":"1:106712931865:ios:ac2e6b5a546940e096d488","macos":"1:106712931865:ios:8d444a1607e7585a96d488","web":"1:106712931865:web:ff2e2a79788624e996d488","windows":"1:106712931865:web:880a57d7207e83d896d488"}}}}}}
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default"
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "game-edu-617ff",
+          "appId": "1:106712931865:android:2dd6932fc20d6cb596d488",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "game-edu-617ff",
+          "configurations": {
+            "android": "1:106712931865:android:2dd6932fc20d6cb596d488",
+            "ios": "1:106712931865:ios:ac2e6b5a546940e096d488",
+            "macos": "1:106712931865:ios:8d444a1607e7585a96d488",
+            "web": "1:106712931865:web:ff2e2a79788624e996d488",
+            "windows": "1:106712931865:web:880a57d7207e83d896d488"
+          }
+        }
+      }
+    }
+  }
+}

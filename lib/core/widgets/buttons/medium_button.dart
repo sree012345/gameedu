@@ -38,7 +38,7 @@ class MediumButton extends BaseButton {
     required super.onPressed,
     super.isLoading,
     bool hasLoaderWidget = true,
-    Color? backgroundColor,
+    super.backgroundColor,
     Gradient? gradient,
     super.isOpacityLess,
     double? height,
@@ -50,7 +50,6 @@ class MediumButton extends BaseButton {
          gradient: backgroundColor != null
              ? null
              : (gradient ?? AppPalette.primaryButtonGradient),
-         backgroundColor: backgroundColor,
          foregroundColor: AppPalette.authButtonTextColor,
 
          /// Pill shape

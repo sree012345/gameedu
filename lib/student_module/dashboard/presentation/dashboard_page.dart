@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:game_edu/common/theme/app_palette.dart';
 import 'package:game_edu/core/routes/router_path.dart';
 import 'package:game_edu/init_dependencies.dart';
-import 'package:game_edu/student_module/classes/dev/classes_seed_button.dart';
 import 'package:game_edu/student_module/classes/presentation/classes_tab.dart';
-import 'package:game_edu/student_module/events/dev/events_seed_button.dart';
+import 'package:game_edu/student_module/community/presentation/common/community_list_screen.dart';
 import 'package:game_edu/student_module/events/presentation/events_tab.dart';
 import 'package:game_edu/student_module/profile/presentation/my_profile_page.dart';
-
 import '../bloc/dashboard_bloc.dart';
 import 'views/home_tab.dart';
 import 'widgets/dashboard_bottom_nav.dart';
@@ -105,10 +103,10 @@ class _DashboardView extends StatelessWidget {
                         child: IndexedStack(
                           index: state.tabIndex,
                           children: [
-                            const HomeTab(),
-                            const ClassesTab(),
+                            HomeTab(),
+                            ClassesTab(),
                             EventsTab(),
-                            const ClassesSeedButton (), // TEMPORARY (debug only)
+                            CommunityListScreen() ,// TEMPORARY (debug only)
                             MyProfilePage(),
                           ],
                         ),
@@ -138,53 +136,6 @@ class _DashboardView extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _TabPlaceholder extends StatelessWidget {
-  const _TabPlaceholder({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppPalette.primaryBlue.withValues(alpha: 0.10),
-              ),
-              child: Icon(icon, size: 40, color: AppPalette.primaryBlue),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.authTextPrimaryColor,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Coming soon',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppPalette.authTextSecondaryColor,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

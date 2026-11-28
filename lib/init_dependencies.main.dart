@@ -14,6 +14,7 @@ Future<void> initDependencies() async {
   _initProfileDependencies();
   _initClassesDependencies();
   _initEventsDependencies();
+  _initCommunityDependencies();
 }
 
 void _initNetworkconnectivityCubit() {
@@ -148,3 +149,44 @@ void _initClassesDependencies() {
            () => EventsBloc(service: serviceLocator<EventsService>()));
        }
      }
+
+
+void _initCommunityDependencies() {
+  if (!serviceLocator.isRegistered<CommunityFirebaseService>()) {
+    serviceLocator.registerLazySingleton<CommunityFirebaseService>(
+      () => CommunityFirebaseService(
+        // Optional: use your existing session/auth instead of reading the
+        // `{env}_users` document. Delete this if `role == 'admin'` is on the user doc.
+        // currentUserLoader: () async => CommunityUser(
+        //   id: yourUid, name: yourName, photoUrl: yourPhoto, isAdmin: yourIsAdmin,
+        // ),
+      ),
+    );
+  }
+
+  if (!serviceLocator.isRegistered<CommunityListBloc>()) {
+    serviceLocator.registerFactory<CommunityListBloc>(
+      () => CommunityListBloc(service: serviceLocator<CommunityFirebaseService>()),
+    );
+  }
+  if (!serviceLocator.isRegistered<CreateCommunityBloc>()) {
+    serviceLocator.registerFactory<CreateCommunityBloc>(
+      () => CreateCommunityBloc(service: serviceLocator<CommunityFirebaseService>()),
+    );
+  }
+  if (!serviceLocator.isRegistered<ParticipantPickerBloc>()) {
+    serviceLocator.registerFactory<ParticipantPickerBloc>(
+      () => ParticipantPickerBloc(service: serviceLocator<CommunityFirebaseService>()),
+    );
+  }
+  if (!serviceLocator.isRegistered<CommunityDetailsBloc>()) {
+    serviceLocator.registerFactory<CommunityDetailsBloc>(
+      () => CommunityDetailsBloc(service: serviceLocator<CommunityFirebaseService>(), ),
+    );
+  }
+  if (!serviceLocator.isRegistered<CommunityChatBloc>()) {
+    serviceLocator.registerFactory<CommunityChatBloc>(
+      () => CommunityChatBloc(service: serviceLocator<CommunityFirebaseService>(),),
+    );
+  }
+}
